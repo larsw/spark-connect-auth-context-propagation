@@ -131,8 +131,8 @@ column looks the way it does is in [FINDINGS.md](FINDINGS.md) §5, §12 and §13
 
 ```
 install.sh              toolchain and /etc/hosts preflight; prompts before sudo
-Makefile                install / build / up / demo / test / test-jvm / client-jar / cid / down
-compose.yaml            keycloak, minio (+audit sink), polaris, spark master/worker/connect
+Makefile                install / build / up / demo{,-jvm,-rust} / test{,-jvm,-rust}{,-it} / cid / down
+compose.yaml            keycloak, minio (+audit sink), polaris (+console), spark master/worker/connect
 docker/keycloak/        realm: alice, bob, four clients, audience and claim mappers
 docker/polaris/         idempotent bootstrap: catalog, namespaces, principals, grants
 docker/polaris-console/ builds the Apache Polaris web console from pinned upstream source

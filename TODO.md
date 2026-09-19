@@ -267,9 +267,11 @@ Compiling against `org.apache.spark:spark-connect_2.13:4.1.3` (scope `provided`)
 the relocated gRPC classes and the unrelocated `org.apache.spark.connect.proto.*` requests, so
 no build-time shading gymnastics were needed on our side.
 
-### 2.17 End-to-end result (verified 2026-09-18)
-`13 passed` in `tests/test_propagation.py`, run from the compose `client` service. A further 26
-client unit tests and 15 Java unit tests run with no stack at all:
+### 2.17 End-to-end result (verified 2026-09-18, re-counted 2026-09-19)
+`13 passed` in `tests/test_propagation.py`, run from the compose `client` service, plus 6 in
+`tests/test_console.py` and 5 each from the JVM and Rust clients against the same stack — 29
+end-to-end in all. A further 83 tests run with no stack at all: 26 Python client, 15 Java plugin,
+28 JVM client and 14 Rust.
 
 | Claim | Evidence |
 |---|---|
@@ -358,18 +360,21 @@ have happened with credentials vended for the authenticated user.
 
 ```
 install.sh              # detect → show → confirm; never silent sudo
-Makefile                # up / bootstrap / demo / test / logs / down
-compose.yaml            # keycloak, polaris, minio, spark-master, spark-worker, spark-connect
+Makefile                # up / demo{,-jvm,-rust} / test{,-jvm,-rust}{,-it} / cid / down
+compose.yaml            # keycloak, polaris, minio, polaris-console, spark master/worker/connect
 docker/spark/           # Dockerfile, spark-defaults.conf, log4j2.properties, entrypoint.sh
 docker/keycloak/spark-realm.json
 docker/polaris/         # bootstrap scripts (catalog, namespaces, roles, grants)
+docker/polaris-console/ # the Apache Polaris web console, built from pinned upstream source
 server/                 # single Maven module → one jar into $SPARK_HOME/jars
   UserTokenServerInterceptor.java    # shaded-gRPC world
   PropagatedIdentityHolder.java      # the static bridge
   TokenExchangeService.java          # nimbus + java.net.http
   PropagatingRestAuthManager.java    # Iceberg world
-client/                 # uv package: channel.py, auth.py, context.py
-demo/demo.py
+client/                 # uv package: channel.py, auth.py, context.py, operation.py
+client-jvm/             # the same client in Java (Maven); public interceptor seam, no patching
+client-rust/            # the same client in Rust (Cargo), on the spark-connect-rs crate
+demo/demo.py            # and demo/java/ + demo/rust/, one walkthrough per client
 tests/
 README.md  FINDINGS.md
 ```
