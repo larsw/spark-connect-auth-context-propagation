@@ -34,6 +34,7 @@ See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstre
 make build       # builds the Java plugin and the Spark image
 make up          # starts the stack and waits for it
 make demo        # interactive two-user walkthrough (device flow, opens a browser URL)
+make demo-jvm    # the same walkthrough, driven by the JVM client
 make test        # full suite on the host
 ```
 
@@ -105,7 +106,8 @@ docker/spark/           image, spark-defaults.conf, log4j2.properties, role entr
 server/                 the Java plugin (one Maven module, one jar)
 client/                 the PySpark client package
 client-jvm/             the same client for the JVM, in Java (Maven)
-demo/  tests/           walkthrough and verification suite
+demo/                   the walkthrough: demo.py, and java/ for the same thing on the JVM
+tests/                  the verification suite
 ```
 
 ### The Java plugin
@@ -193,6 +195,12 @@ Three things differ from the Python client, none of them by choice:
 
 `make test-jvm` runs its unit tests with no stack at all; `make test-jvm-it` runs it against the
 live stack, asserting the same claims the Python suite does.
+
+`make demo-jvm` is `make demo` driven by this client instead — `demo/java/` is a separate module
+that depends on the published artifact, so running it also proves the library is consumable the
+way anyone else would consume it. Both demos print the same walkthrough from the same unchanged
+server, and because they share the token cache, whichever one you ran last leaves the other
+already signed in.
 
 ## The Polaris console
 

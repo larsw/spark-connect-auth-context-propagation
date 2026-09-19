@@ -17,7 +17,7 @@ JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
 
 .DEFAULT_GOAL := help
-.PHONY: help install jar client-jar build up bootstrap demo test-unit test test-jvm test-jvm-it test-container logs cid ps down clean
+.PHONY: help install jar client-jar build up bootstrap demo demo-jvm test-unit test test-jvm test-jvm-it test-container logs cid ps down clean
 
 help: ## Show this help
 	@echo "Spark Connect propagation PoC"
@@ -65,6 +65,9 @@ bootstrap: ## Re-run the Polaris catalog/principal/grant bootstrap (idempotent)
 demo: ## Interactive two-user walkthrough (device flow; opens a browser URL)
 	@cd client && uv run python ../demo/demo.py
 
+demo-jvm: client-jar ## The same walkthrough, driven by the JVM client instead of the Python one
+	@mvn -q -f demo/java/pom.xml compile exec:exec
+
 test-unit: ## Fast client unit tests -- no stack, no docker, no network
 	@cd client && uv run pytest ../tests/test_client_unit.py -q
 
@@ -88,7 +91,7 @@ cid: ## Trace one correlation ID across all three services: make cid CID=<uuid>
 	@test -n "$(CID)" || { echo "usage: make cid CID=<uuid>" >&2; exit 2; }
 	@for svc in spark-connect polaris; do \
 	  echo "----- $$svc -----"; \
-	  $(COMPOSE) logs --no-log-prefix $$svc 2>/dev/null | grep -F "$(CID)" || echo "  (no match)"; \
+	  $(COMPOSE) logs --no-log-prefix $$svc 2>/dev/null | grep -aF "$(CID)" || echo "  (no match)"; \
 	done
 
 ps: ## Show service status

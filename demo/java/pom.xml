@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.sparkconnect</groupId>
+  <artifactId>spark-connect-propagation-demo</artifactId>
+  <version>0.1.0</version>
+  <packaging>jar</packaging>
+  <name>Spark Connect propagation demo (JVM)</name>
+  <description>
+    The JVM twin of demo/demo.py. Deliberately a separate module that depends on the published
+    client artifact, so running it also proves the library is consumable the way anyone else
+    would consume it.
+  </description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>21</maven.compiler.release>
+  </properties>
+
+  <dependencies>
+    <!-- `make client-jar` installs this into the local repository first. -->
+    <dependency>
+      <groupId>io.sparkconnect</groupId>
+      <artifactId>spark-connect-propagation-client</artifactId>
+      <version>0.1.0</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>${project.artifactId}-${project.version}</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <configuration>
+          <!--
+            exec:exec rather than exec:java, because this needs its own JVM: Spark Connect hands
+            results back as Arrow batches and Arrow reaches into java.nio reflectively, which
+            Java 17+ encapsulates. Without the add-opens the first collect() dies with
+            "Could not initialize class ...arrow.memory.util.MemoryUtil".
+          -->
+          <executable>java</executable>
+          <arguments>
+            <argument>--add-opens=java.base/java.nio=ALL-UNNAMED</argument>
+            <argument>-Dio.netty.tryReflectionSetAccessible=true</argument>
+            <argument>-classpath</argument>
+            <classpath/>
+            <argument>io.sparkconnect.propagation.demo.Demo</argument>
+          </arguments>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
