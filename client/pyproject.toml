@@ -1,0 +1,27 @@
+[project]
+name = "spark-connect-propagation"
+version = "0.1.0"
+description = "PySpark client that threads a user token and a correlation ID through Spark Connect"
+requires-python = ">=3.10"
+dependencies = [
+    # The pure-Python Connect client: 1.6 MB and no JVM, versus 455 MB for full pyspark.
+    # It also cannot silently fall back to a local Spark session, which keeps the PoC honest.
+    "pyspark-client==4.1.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-timeout>=2.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spark_connect_propagation"]
+
+[tool.pytest.ini_options]
+timeout = 300
+addopts = "-ra"

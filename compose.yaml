@@ -1,0 +1,235 @@
+# Spark Connect token + correlation-ID propagation PoC.
+#
+# Hostnames matter here. Every party -- your browser during device flow, the PySpark
+# client on the host, Polaris fetching JWKS, and our Java validator -- must reach
+# Keycloak at the SAME URL, because Keycloak stamps exactly one issuer into every
+# token. That is why KC_HOSTNAME is the compose service name and why install.sh adds
+# loopback aliases for these names.
+
+name: spark-connect-propagation
+
+x-spark-common: &spark-common
+  build:
+    context: ./docker/spark
+  image: spark-connect-propagation/spark:4.1.3
+  restart: unless-stopped
+
+services:
+
+  # ---------------------------------------------------------------- Keycloak --
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.0
+    ports:
+      - "8080:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # One issuer for browser and containers alike -- see the note at the top.
+      KC_HOSTNAME: http://keycloak:8080
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "false"
+      KC_HTTP_ENABLED: "true"
+    volumes:
+      - ./docker/keycloak/spark-realm.json:/opt/keycloak/data/import/spark-realm.json:ro
+    command: ["start-dev", "--import-realm", "--health-enabled=true"]
+    healthcheck:
+      test: "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  # ------------------------------------------------------------------- MinIO --
+  # Docker Hub's minio/minio is gone (404); the images live on quay.io now.
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    depends_on:
+      minio-audit:
+        condition: service_started
+    environment:
+      MINIO_ROOT_USER: minio_root
+      MINIO_ROOT_PASSWORD: m1n1opwd
+      # Audit every S3 request so the tests can prove which credential the executor used.
+      MINIO_AUDIT_WEBHOOK_ENABLE_poc: "on"
+      MINIO_AUDIT_WEBHOOK_ENDPOINT_poc: "http://minio-audit:8888/audit"
+    command: ["server", "/data", "--console-address", ":9001"]
+    volumes:
+      # Without this, recreating the container silently destroys every table's data files
+      # while Polaris happily keeps serving metadata that points at them.
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  minio-setup:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        mc alias set poc http://minio:9000 minio_root m1n1opwd &&
+        (mc mb --ignore-existing poc/warehouse) &&
+        mc ls poc &&
+        echo "bucket ready"
+
+  minio-audit:
+    image: python:3.12-slim
+    command: ["python", "/collector.py"]
+    volumes:
+      - ./docker/minio-audit/collector.py:/collector.py:ro
+      - audit:/audit
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8888/')\""]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # ----------------------------------------------------------------- Polaris --
+  polaris:
+    image: apache/polaris:1.7.0
+    ports:
+      - "8181:8181"
+      - "8182:8182"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      minio-setup:
+        condition: service_completed_successfully
+    environment:
+      # Root principal for bootstrap (internal auth); alice/bob arrive via Keycloak.
+      POLARIS_BOOTSTRAP_CREDENTIALS: "POLARIS,root,s3cr3t"
+      polaris.realm-context.realms: "POLARIS"
+
+      # 'mixed' so the bootstrap can use internal root credentials while end users
+      # authenticate with externally-issued Keycloak tokens.
+      polaris.authentication.type: "mixed"
+      polaris.authentication.authenticator.type: "default"
+
+      quarkus.oidc.tenant-enabled: "true"
+      quarkus.oidc.auth-server-url: "http://keycloak:8080/realms/spark"
+      quarkus.oidc.client-id: "polaris"
+      quarkus.oidc.roles.role-claim-path: "principal_roles"
+
+      # Resolve the Polaris principal BY NAME. Deliberately no id-claim-path: principals
+      # must already exist in Polaris (DefaultAuthenticator does not support federated
+      # principals), and name resolution avoids having to round-trip Polaris's numeric
+      # principal IDs back into Keycloak claims.
+      polaris.oidc.principal-mapper.name-claim-path: "principal_name"
+
+      # Keycloak realm role 'data_engineer' -> Polaris 'PRINCIPAL_ROLE:data_engineer'.
+      # $$1 is escaped so compose does not interpolate it.
+      polaris.oidc.principal-roles-mapper.mappings[0].regex: "(.+)"
+      polaris.oidc.principal-roles-mapper.mappings[0].replacement: "PRINCIPAL_ROLE:$$1"
+
+      polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"S3\"]"
+      polaris.readiness.ignore-severe-issues: "true"
+      quarkus.otel.sdk.disabled: "true"
+
+      # Polaris is the ONLY component holding MinIO's root credentials -- it needs them
+      # to call STS AssumeRole when vending scoped credentials. Spark has none.
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: minio_root
+      AWS_SECRET_ACCESS_KEY: m1n1opwd
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  polaris-setup:
+    image: alpine/curl:8.21.0
+    depends_on:
+      polaris:
+        condition: service_healthy
+    volumes:
+      - ./docker/polaris:/bootstrap:ro
+    entrypoint: ["/bin/sh", "/bootstrap/bootstrap.sh"]
+
+  # ------------------------------------------------------------------ client --
+  # Profiled, so it never starts with the stack. Run it explicitly:
+  #   docker compose run --rm client tests/smoke.py
+  client:
+    profiles: ["tools"]
+    build:
+      context: ./docker/client
+    image: spark-connect-propagation/client:0.1.0
+    depends_on:
+      spark-connect:
+        condition: service_healthy
+    environment:
+      SPARK_REMOTE: "sc://spark-connect:15002"
+      KEYCLOAK_ISSUER: "http://keycloak:8080/realms/spark"
+      POLARIS_URL: "http://polaris:8181"
+      CONNECT_SHARED_SECRET: "${CONNECT_SHARED_SECRET:-poc-shared-secret}"
+    volumes:
+      - ./client:/work/client:ro
+      - ./demo:/work/demo:ro
+      - ./tests:/work/tests:ro
+      # Read-only, and only so the correlation-ID assertion can read service logs from inside
+      # the network. Nothing else in the PoC touches the docker API.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - audit:/audit:ro
+    entrypoint: ["python"]
+
+  # ------------------------------------------------------------------- Spark --
+  spark-master:
+    <<: *spark-common
+    environment:
+      SPARK_ROLE: master
+    ports:
+      - "8082:8080"
+      - "7077:7077"
+    healthcheck:
+      # dash has no /dev/tcp, and CMD-SHELL uses /bin/sh -- so call bash explicitly.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/spark-master/7077"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  spark-worker:
+    <<: *spark-common
+    environment:
+      SPARK_ROLE: worker
+      SPARK_WORKER_CORES: "2"
+      SPARK_WORKER_MEMORY: "2g"
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+
+  spark-connect:
+    <<: *spark-common
+    environment:
+      SPARK_ROLE: connect
+      # Spark's own channel-level pre-shared key, checked against the Authorization
+      # header by PreSharedKeyAuthenticationInterceptor. The per-user JWT is separate
+      # and rides x-user-token.
+      SPARK_CONNECT_AUTHENTICATE_TOKEN: "${CONNECT_SHARED_SECRET:-poc-shared-secret}"
+      SPARK_CONNECT_PROPAGATION_CLIENT_SECRET: "spark-connect-secret"
+    depends_on:
+      spark-master:
+        condition: service_healthy
+      polaris-setup:
+        condition: service_completed_successfully
+    ports:
+      - "15002:15002"
+      - "4040:4040"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/15002"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+      start_period: 30s
+
+volumes:
+  audit:
+  minio-data:

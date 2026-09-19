@@ -1,0 +1,21 @@
+# Build output
+target/
+*.jar
+!docker/spark/jars/.gitkeep
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Local state
+.env
+docker/spark/jars/*.jar
+.cache/
+
+# Editors
+.idea/
+.vscode/
