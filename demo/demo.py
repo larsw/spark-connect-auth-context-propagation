@@ -31,6 +31,20 @@ def heading(text: str) -> None:
     print(f"{DIM}{'-' * len(text)}{RESET}")
 
 
+def require_shared_secret() -> None:
+    """Checked up front so a misconfigured run fails before asking anyone to log in."""
+    if os.environ.get("CONNECT_SHARED_SECRET"):
+        return
+    print(
+        f"{RED}CONNECT_SHARED_SECRET is not set.{RESET}\n"
+        "  Spark Connect's pre-shared-key check will reject every RPC, and its error talks\n"
+        "  about an authentication token, which is a different credential from your login.\n"
+        f"  Run this through {BOLD}make demo{RESET}, which exports it.\n",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+
+
 def sign_in(user: str):
     heading(f"Sign in as {user}")
     print(f"{DIM}  (password is '{user}' in this sandbox realm){RESET}")
@@ -60,6 +74,8 @@ def main() -> int:
         One Spark Connect server, one Polaris catalog, two users. Nothing about the
         server changes between them -- only the token each client presents.
     """))
+
+    require_shared_secret()
 
     alice = sign_in("alice")
     bob = sign_in("bob")

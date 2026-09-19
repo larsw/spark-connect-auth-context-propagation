@@ -26,8 +26,28 @@ def token_provider(user: str) -> PasswordGrantTokenProvider:
     )
 
 
+def require_shared_secret() -> str:
+    """Spark's channel-level pre-shared key, which is separate from the user's token.
+
+    compose sets this for containers, so only host runs can hit a missing value -- where the
+    server's reply ("No authentication token provided") points at the wrong credential entirely.
+    """
+    secret = os.environ.get("CONNECT_SHARED_SECRET")
+    if not secret:
+        # pytest.exit rather than a failure: this is a misconfigured run, not a broken system,
+        # and one clear line beats the same traceback repeated for every test.
+        pytest.exit(
+            "CONNECT_SHARED_SECRET is not set, so the client cannot satisfy Spark Connect's "
+            "pre-shared-key check and every RPC would fail as UNAUTHENTICATED. Run these "
+            "through `make test`, which exports it, or set it to match compose.yaml.",
+            returncode=2,
+        )
+    return secret
+
+
 @pytest.fixture(scope="session")
 def alice():
+    require_shared_secret()
     session = connect(REMOTE, token_provider("alice"))
     yield session
     session.stop()
@@ -35,6 +55,7 @@ def alice():
 
 @pytest.fixture(scope="session")
 def bob():
+    require_shared_secret()
     session = connect(REMOTE, token_provider("bob"))
     yield session
     session.stop()

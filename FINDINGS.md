@@ -226,6 +226,7 @@ Two things are required to make it talk to Polaris and are silent failures other
 | Master advertises the driver's hostname for its own UI | `spark.driver.host` in a shared `spark-defaults.conf` applies to master and worker too |
 | Tables vanish but Polaris still lists them | MinIO container recreated without a named volume |
 | A query produces no Polaris request at all | Iceberg caches loaded tables; disable `cache-enabled` if propagation must be observable |
+| Every RPC fails with "No authentication token provided" | That is Spark's *channel-level* pre-shared key (`PreSharedKeyAuthenticationInterceptor`), not the user's token. The message names the wrong credential, so it sends you hunting in the OIDC path |
 | One JWKS failure after restarting Keycloak | Recreating Keycloak rotates its signing keys; validators recover on refresh |
 | Keycloak answers 400 to a login form POST | The flow started on one hostname and the form action is on another, so the session cookie is not sent. Keycloak renders the form action using its configured frontend hostname |
 | `docker compose config` shows `$$1` and you cannot tell if it is right | It re-escapes on output. Only running a container shows the real value (`PRINCIPAL_ROLE:$1`) |

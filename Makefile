@@ -4,6 +4,13 @@
 #   ./install.sh && make build && make up && make demo
 
 SHELL := /bin/bash
+
+# Spark's own channel-level pre-shared key (PreSharedKeyAuthenticationInterceptor). The server
+# gets it from compose.yaml, which carries the same default; this exports it for the host-side
+# demo and tests. Without it the server answers "No authentication token provided", which sounds
+# like it is about the user's token and is not. Keep the two defaults in step.
+CONNECT_SHARED_SECRET ?= poc-shared-secret
+export CONNECT_SHARED_SECRET
 COMPOSE := docker compose
 JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
