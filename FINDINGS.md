@@ -307,3 +307,68 @@ server for everything here, the Connect protocol being backwards compatible. And
 gRPC status as `Unauthenicated` (sic) in its `Display` impl, so a caller matching on the rendered
 string is matching a typo; it is fixed on `main` but not released, and matching the variant, or the
 server's own message, avoids the question.
+
+## 14. Per-user catalog auth and out-of-band lineage collection are in direct conflict
+
+Adding OpenLineage turned the thread-boundary problem of §4 around and pointed it back at us.
+
+**Job-level lineage works.** OpenLineage 1.53.0 registers as an ordinary `SparkListener`, so Spark
+Connect changes nothing for it: `make test` produces eight jobs in Marquez —
+`create_table.restricted_salaries`, `append_data.polaris_restricted_salaries`, `drop_table` and so
+on — with run ids, timings and success or failure.
+
+**Dataset-level lineage does not, and cannot, in a stack built like this one.** Every event
+carries empty `inputs` and `outputs`. The reason is not a missing facet or a version gap:
+
+```
+WARN [,] PropagatingRestAuthManager: no propagated identity for this thread;
+                                     sending an unauthenticated catalog request
+  ...
+  at io.openlineage.spark3.agent.lifecycle.plan.catalog.iceberg.BaseCatalogTypeHandler.getIcebergTable
+  at org.apache.iceberg.spark.SparkCatalog.loadTable
+  at org.apache.spark.scheduler.AsyncEventQueue$$anon$2.run
+org.apache.iceberg.exceptions.NotAuthorizedException: Not authorized:
+```
+
+To name a dataset, OpenLineage's Iceberg handler loads the table from the catalog. It does that on
+the listener bus thread — note the empty `[,]` MDC, and `AsyncEventQueue` at the bottom of the
+stack. §4 established that the *only* thing crossing into a Connect operation's thread is the job
+tag, and the listener thread has no job tag, so our AuthManager has no identity and sends the call
+unauthenticated, exactly as designed. Polaris answers 401 and the dataset goes unresolved. 38
+times per test run.
+
+The conflict is structural, not incidental. A catalog that authorises per user can only be read by
+something that *is* a user; a lineage collector that runs beside the query, on its own thread,
+deliberately is not one. Three ways out, none free:
+
+* Give the collector a service identity for catalog reads. Cheapest, and it puts an ambient
+  credential back into Spark — the one thing this PoC exists to show you do not need.
+* Resolve datasets from the plan without a catalog round trip. Correct but upstream work, and it
+  gives up whatever only the catalog knows.
+* Carry the identity to the listener thread too, keyed by the run. That is §5's per-operation
+  keying again, one thread further out, and it is the only option that keeps both properties.
+
+Worth knowing before designing lineage into a system with per-user catalog authorisation: the two
+features are not independent, and nothing in either project's documentation says so.
+
+It is also loud. Each failed resolution is a 401 from Polaris, which Iceberg's
+`org.apache.iceberg.rest.ErrorHandlers` logs with a full stack trace — around 76 of them per
+`make test`, in a log whose selling point is that you can grep it. Turning the `io.openlineage`
+loggers off does *not* fix that, which is worth knowing before trying: the traces are Iceberg's,
+not OpenLineage's, and the only logger that would silence them is the one that also reports
+genuine authorisation failures like bob's 403. Left noisy on purpose; the alternative hides our
+own errors to tidy up after someone else's.
+
+**Also, and separately: OpenLineage below 1.53.0 does not run on Spark 4.1.3 at all.** 1.34.0
+registers, then throws on the first event and takes the SparkContext with it:
+
+```
+ERROR Utils: uncaught error in thread spark-listener-group-shared, stopping SparkContext
+java.lang.NoSuchMethodError: 'org.apache.spark.sql.SparkSession
+                              org.apache.spark.sql.execution.QueryExecution.sparkSession()'
+```
+
+Spark 4.1 moved `QueryExecution` behind the `classic` module and changed that return type, so a
+listener compiled against 4.0 fails at link time — and a listener that throws does not merely stop
+collecting lineage, it stops the query engine. The newest release module is still `spark40`; 1.53.0
+works on 4.1.3 regardless, but pin it deliberately rather than by luck.

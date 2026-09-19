@@ -132,7 +132,7 @@ column looks the way it does is in [FINDINGS.md](FINDINGS.md) §5, §12 and §13
 ```
 install.sh              toolchain and /etc/hosts preflight; prompts before sudo
 Makefile                install / build / up / demo{,-jvm,-rust} / test{,-jvm,-rust}{,-it} / cid / down
-compose.yaml            keycloak, minio (+audit sink), polaris (+console), spark master/worker/connect
+compose.yaml            keycloak, minio (+audit sink), polaris (+console), marquez, spark master/worker/connect
 docker/keycloak/        realm: alice, bob, four clients, audience and claim mappers
 docker/polaris/         idempotent bootstrap: catalog, namespaces, principals, grants
 docker/polaris-console/ builds the Apache Polaris web console from pinned upstream source
@@ -320,6 +320,50 @@ trace. Two things make it work and are easy to miss: Polaris needs CORS opened f
 browser origin (Quarkus defaults it off), and the console's config is injected at container start
 into `window.APP_CONFIG`, so one image can be pointed anywhere without a rebuild.
 
+## Lineage, and where it collides with this design
+
+The stack runs OpenLineage's Spark listener, reporting to [Marquez](https://marquezproject.ai) at
+**http://localhost:3001**. It is a plain `SparkListener`, so Spark Connect changes nothing for it:
+run `make test` or any demo and eight jobs show up —
+
+```bash
+curl -s localhost:5000/api/v1/namespaces/spark-connect-poc/jobs | jq '.jobs[].name'
+```
+
+```
+spark_connect_server_propagation_po_c.create_table.restricted_salaries
+spark_connect_server_propagation_po_c.append_data.polaris_restricted_salaries
+spark_connect_server_propagation_po_c.drop_table
+...
+```
+
+**Every one of them has empty `inputs` and `outputs`, and that is the interesting part.** To name a
+dataset, OpenLineage loads the table from the catalog — on the listener bus thread. That thread
+carries no Connect job tag, so the `PropagatingRestAuthManager` has no identity for it and sends
+the call unauthenticated, Polaris answers 401, and the dataset goes unresolved:
+
+```
+WARN [,] PropagatingRestAuthManager: no propagated identity for this thread;
+                                     sending an unauthenticated catalog request
+```
+
+Note the empty `[,]` where a correlation ID and principal would be. This is the same thread
+boundary the whole PoC is about, met from the other side: a catalog that authorises per user can
+only be read by something that *is* a user, and a collector running beside the query on its own
+thread deliberately is not one. Giving the collector a service identity would fix it and would put
+back the ambient credential this PoC exists to show you do not need. [FINDINGS.md](FINDINGS.md)
+§14 lays out the three ways out and what each costs.
+
+Each failed resolution is a 401, which Iceberg logs with a stack trace, so the Spark Connect log
+carries roughly 76 of them per `make test`. That noise is left in deliberately: the only logger
+that would silence it is the one that also reports genuine authorisation failures like bob's 403.
+To run without it, blank `spark.extraListeners` in `docker/spark/spark-defaults.conf` and rebuild.
+
+So take the lineage here as what it is: job-level lineage that works, and a worked example of two
+reasonable designs that do not compose. Pin OpenLineage at 1.53.0 or newer, too — 1.34.0 does not
+merely fail to collect on Spark 4.1.3, it throws from the listener and takes the SparkContext down
+with it.
+
 ## Tracing a request
 
 ```bash
@@ -352,6 +396,8 @@ what the page tells you if you get it wrong.
 | Polaris | http://polaris:8181 |
 | **Polaris console** | **[http://localhost:3000](http://localhost:3000)** — localhost, never the service name ([why](#the-polaris-console)) |
 | MinIO console | http://minio:9001 |
+| Marquez (lineage UI) | [http://localhost:3001](http://localhost:3001) |
+| Marquez API | http://localhost:5000 |
 | Spark master | http://spark-master:8082 |
 | Spark driver UI | http://spark-connect:4040 |
 | Spark Connect | sc://spark-connect:15002 |

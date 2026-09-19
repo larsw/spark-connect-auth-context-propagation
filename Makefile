@@ -58,6 +58,7 @@ up: ## Start the whole stack and wait until Spark Connect is accepting connectio
 	@echo "  Keycloak       http://keycloak:8080       (admin/admin)"
 	@echo "  Polaris        http://polaris:8181"
 	@echo "  MinIO console  http://minio:9001          (minio_root/m1n1opwd)"
+	@echo "  Marquez        http://localhost:3001      (lineage UI; API on :5000)"
 	@echo "  Spark master   http://spark-master:8082"
 	@echo "  Spark driver   http://spark-connect:4040"
 	@echo "  Spark Connect  sc://spark-connect:15002"
