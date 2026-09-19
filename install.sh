@@ -147,7 +147,7 @@ fi
 # fails on an issuer mismatch. Using the compose service names everywhere, with
 # these aliases pointing at the published ports, keeps one issuer for everyone.
 #
-HOST_ALIASES="keycloak polaris minio spark-connect spark-master"
+HOST_ALIASES="keycloak polaris polaris-console minio spark-connect spark-master"
 HOSTS_MARKER="# spark-connect-propagation PoC"
 
 head2 "/etc/hosts aliases"
@@ -178,7 +178,7 @@ head2 "Host ports"
 
 port_busy() { ss -ltn "sport = :$1" 2>/dev/null | tail -n +2 | grep -q . ; }
 
-for spec in "8080 keycloak" "8181 polaris" "9000 minio" "9001 minio-console" \
+for spec in "8080 keycloak" "8181 polaris" "3000 polaris-console" "9000 minio" "9001 minio-console" \
             "15002 spark-connect" "4040 spark-ui" "7077 spark-master" "8081 spark-worker-ui"; do
   set -- $spec
   if port_busy "$1"; then

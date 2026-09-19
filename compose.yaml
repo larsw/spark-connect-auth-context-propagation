@@ -129,6 +129,14 @@ services:
       polaris.oidc.principal-roles-mapper.mappings[0].replacement: "PRINCIPAL_ROLE:$$1"
 
       polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"S3\"]"
+
+      # The console is a browser app calling Polaris from its own origin, so CORS has to be
+      # opened for it. Quarkus defaults this to false.
+      quarkus.http.cors.enabled: "true"
+      quarkus.http.cors.origins: "http://polaris-console:3000,http://localhost:3000"
+      quarkus.http.cors.methods: "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"
+      quarkus.http.cors.headers: "*"
+      quarkus.http.cors.exposed-headers: "*"
       polaris.readiness.ignore-severe-issues: "true"
       quarkus.otel.sdk.disabled: "true"
 
@@ -152,6 +160,41 @@ services:
     volumes:
       - ./docker/polaris:/bootstrap:ro
     entrypoint: ["/bin/sh", "/bootstrap/bootstrap.sh"]
+
+  # ---------------------------------------------------------- Polaris console --
+  # The Apache Polaris web console, from apache/polaris-tools (the main polaris repo has no UI).
+  # It signs in through Keycloak as alice or bob, so it shows that user's view of the catalog --
+  # bob simply cannot see the restricted namespace.
+  polaris-console:
+    build:
+      context: ./docker/polaris-console
+    image: spark-connect-propagation/polaris-console:0.1.0
+    restart: unless-stopped
+    depends_on:
+      polaris:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    environment:
+      # NOTE: every URL here is resolved by the BROWSER, not by this container -- the console is
+      # static files and all its calls are made from the user's machine. That is why they use the
+      # same service-name hostnames as the rest of the stack, which install.sh maps to loopback.
+      VITE_POLARIS_API_URL: "http://polaris:8181"
+      VITE_POLARIS_REALM: "POLARIS"
+      VITE_POLARIS_PRINCIPAL_SCOPE: "PRINCIPAL_ROLE:ALL"
+      VITE_POLARIS_REALM_HEADER_NAME: "Polaris-Realm"
+      # Kept so the console can still fall back to Polaris's internal root credentials.
+      VITE_OAUTH_TOKEN_URL: "http://polaris:8181/api/catalog/v1/oauth/tokens"
+      # Preferred path: log in as a real user against the same realm Spark uses.
+      VITE_OIDC_ISSUER_URL: "http://keycloak:8080/realms/spark"
+      VITE_OIDC_CLIENT_ID: "polaris-console"
+      VITE_OIDC_REDIRECT_URI: "http://polaris-console:3000/auth/callback"
+      VITE_OIDC_SCOPE: "openid profile email"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   # ------------------------------------------------------------------ client --
   # Profiled, so it never starts with the stack. Run it explicitly:

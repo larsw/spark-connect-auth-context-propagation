@@ -20,3 +20,6 @@ docker/spark/jars/*.jar
 # Editors
 .idea/
 .vscode/
+
+# Git worktrees created by tooling; never part of the project tree.
+.claude/worktrees/

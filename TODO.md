@@ -5,7 +5,7 @@ Spark Connect (PySpark client → Java server extensions), have the server excha
 for a downstream credential, and prove it reaches an Apache Polaris catalog and MinIO
 object storage with per-user authorisation.
 
-**Status:** design locked 2026-09-18. **Complete.** All milestones done, all four open risks resolved. 11 end-to-end checks pass against the live stack, plus 27 unit tests (10 Java, 17 Python) that need nothing running.
+**Status:** design locked 2026-09-18. **Complete.** All milestones done, all four open risks resolved. 15 end-to-end checks pass against the live stack, plus 27 unit tests (10 Java, 17 Python) that need nothing running.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
@@ -421,6 +421,30 @@ README.md  FINDINGS.md
 - [x] E1 `README.md` — quickstart + mermaid sequence diagram
 - [x] E2 `FINDINGS.md` — §2 written up as upstream findings
 - [x] E3 published page: https://claude.ai/code/artifact/a12709f8-3cfa-4167-9507-bd9121b64265
+
+---
+
+## 5b. Milestone F — Apache Polaris console (added 2026-09-19)
+
+- [x] F1 `docker/polaris-console/Dockerfile` — builds the console from `apache/polaris-tools`
+      at pinned commit `8ffe1e5`, node:22-alpine build stage, nginx:alpine runtime (49 MB).
+      Fetches the source rather than vendoring it.
+- [x] F2 `entrypoint.sh` generates `window.APP_CONFIG` at container start; `nginx.conf` provides
+      SPA fallback, no-cache for `/config.js`, asset caching and `/health`.
+- [x] F3 Keycloak client `polaris-console`: public, standard flow, PKCE S256, redirect URIs and
+      web origins for both `polaris-console:3000` and `localhost:3000`, carrying the same
+      audience and principal-claim mappers as `spark-connect`.
+- [x] F4 Polaris CORS opened for the console origin (`quarkus.http.cors.*`, default is off).
+- [x] F5 `polaris-console` added to the `/etc/hosts` aliases in `install.sh`, plus a port check.
+- [x] F6 `tests/test_console.py` — drives the real auth-code + PKCE flow headlessly and asserts
+      alice sees `restricted` while bob gets 403, plus the CORS preflight.
+
+**Why it matters here:** the console signs in through the same realm as Spark, so it renders the
+authenticated user's view of the catalog rather than an admin's. It is the same authorisation
+decision the Spark path makes, visible in a UI.
+
+**Where the console actually lives:** `apache/polaris-tools`, not `apache/polaris` — see §12 of
+FINDINGS.md. The main Polaris repo has no UI at all.
 
 ---
 

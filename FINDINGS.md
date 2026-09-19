@@ -192,7 +192,32 @@ and the decoded session policy is narrowed to a single table's prefix:
 Since no Spark container holds any S3 credential at all, a successful read from the worker JVM
 can only have used credentials vended for the authenticated user.
 
-## 12. Smaller things that cost time
+## 12. The Polaris console lives in a different repository
+
+There is no UI anywhere in `apache/polaris` — the `main` tree has no `package.json`, no
+`.tsx/.jsx/.vue/.svelte` files and no `ui` or `console` directory, and the running server serves
+no Swagger UI, OpenAPI document or Quarkus Dev UI (all 404 in prod mode). The console is in
+**`apache/polaris-tools`**, under `console/`: a Vite + React + TypeScript app.
+
+Two details make it easy to integrate:
+
+* Configuration is injected at container start. `index.html` loads `/config.js`, and
+  `src/lib/config.ts` prefers `window.APP_CONFIG` over the values Vite inlined at build time, so
+  one image can be pointed at different Polaris and identity-provider URLs without rebuilding.
+* It supports OIDC authorization code with PKCE (S256), as well as Polaris's internal
+  client-credentials path and even token exchange.
+
+It publishes no release tags — the only tags in that repository belong to the catalog migrator —
+so a build must pin a commit.
+
+Two things are required to make it talk to Polaris and are silent failures otherwise:
+
+* **CORS.** The console is a browser app calling Polaris from its own origin. Quarkus defaults
+  `quarkus.http.cors.enabled` to `false`, so without opening it every API call dies in preflight.
+* **Claims.** Its OIDC client needs the same audience and principal-claim mappers as any other
+  Polaris client, or Polaris cannot map the token to a principal.
+
+## 13. Smaller things that cost time
 
 | Symptom | Cause |
 |---|---|
@@ -202,4 +227,5 @@ can only have used credentials vended for the authenticated user.
 | Tables vanish but Polaris still lists them | MinIO container recreated without a named volume |
 | A query produces no Polaris request at all | Iceberg caches loaded tables; disable `cache-enabled` if propagation must be observable |
 | One JWKS failure after restarting Keycloak | Recreating Keycloak rotates its signing keys; validators recover on refresh |
+| Keycloak answers 400 to a login form POST | The flow started on one hostname and the form action is on another, so the session cookie is not sent. Keycloak renders the form action using its configured frontend hostname |
 | `docker compose config` shows `$$1` and you cannot tell if it is right | It re-escapes on output. Only running a container shows the real value (`PRINCIPAL_ROLE:$1`) |

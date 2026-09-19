@@ -8,7 +8,7 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-**Status:** complete and verified. 11 end-to-end checks against the live stack, plus 27 unit tests.
+**Status:** complete and verified. 15 end-to-end checks against the live stack, plus 27 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and
 [TODO.md](TODO.md) for the full decision record.
 
@@ -24,6 +24,7 @@ See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstre
 | **Identity-aware data plane** | alice and bob receive different temporary STS credentials, scoped by session policy to a single table prefix |
 | **Correlation** | One UUID appears in the PySpark client, the Spark Connect server and Polaris, including on failures |
 | **Session integrity** | A client claiming another user's `user_id`/`session_id` is refused — a gap Spark Connect leaves open by default |
+| **The same identity in a UI** | The Apache Polaris console signs in as alice or bob through the same realm, and renders only what that user may see |
 
 ## Quickstart
 
@@ -87,8 +88,9 @@ parses to recover the session and look up the credential.
 install.sh              toolchain and /etc/hosts preflight; prompts before sudo
 Makefile                install / build / up / bootstrap / demo / test-unit / test / cid / down
 compose.yaml            keycloak, minio (+audit sink), polaris, spark master/worker/connect
-docker/keycloak/        realm: alice, bob, three clients, audience and claim mappers
+docker/keycloak/        realm: alice, bob, four clients, audience and claim mappers
 docker/polaris/         idempotent bootstrap: catalog, namespaces, principals, grants
+docker/polaris-console/ builds the Apache Polaris web console from pinned upstream source
 docker/spark/           image, spark-defaults.conf, log4j2.properties, role entrypoint
 server/                 the Java plugin (one Maven module, one jar)
 client/                 the PySpark client package
@@ -128,6 +130,29 @@ Built entirely on public PySpark API — `DefaultChannelBuilder`, `add_intercept
 `builder.channelBuilder` — so there is no fork and no monkeypatching. Token acquisition is behind
 a `TokenProvider` protocol: device flow for humans, password grant so the tests stay headless.
 
+## The Polaris console
+
+The stack includes the Apache Polaris web console, which lives in
+[apache/polaris-tools](https://github.com/apache/polaris-tools) under `console/` — not in
+`apache/polaris`, which contains no UI at all. `docker/polaris-console/Dockerfile` builds it from
+a pinned upstream commit rather than vendoring a copy, so there is nothing of theirs to keep in
+sync here.
+
+Open http://polaris-console:3000 and sign in as **alice** or **bob**. It uses authorization code
+with PKCE against the same Keycloak realm Spark uses, so the token it receives carries the same
+`principal_name` and `principal_roles` claims — which means the console is not an admin view. It
+renders whichever catalog the logged-in user is actually entitled to:
+
+| | `shared` | `restricted` |
+|---|---|---|
+| alice | visible | visible |
+| bob | visible | **403** |
+
+That is the same authorisation decision the Spark path hits, seen through a UI instead of a stack
+trace. Two things make it work and are easy to miss: Polaris needs CORS opened for the console's
+browser origin (Quarkus defaults it off), and the console's config is injected at container start
+into `window.APP_CONFIG`, so one image can be pointed anywhere without a rebuild.
+
 ## Tracing a request
 
 ```bash
@@ -153,6 +178,7 @@ line up by eye.
 |---|---|
 | Keycloak | http://keycloak:8080 |
 | Polaris | http://polaris:8181 |
+| Polaris console | http://polaris-console:3000 |
 | MinIO console | http://minio:9001 |
 | Spark master | http://spark-master:8082 |
 | Spark driver UI | http://spark-connect:4040 |
