@@ -65,7 +65,9 @@ provided` before it ever looks at the user token.
 ```mermaid
 sequenceDiagram
     participant U as alice (browser)
-    participant C as Client (PySpark / JVM / Rust)
+    participant Py as PySpark client
+    participant Jv as JVM client
+    participant Rs as Rust client
     participant S as Spark Connect server
     participant K as Keycloak
     participant P as Polaris
@@ -73,10 +75,23 @@ sequenceDiagram
     participant M as MinIO
 
     U->>K: device flow login
-    K-->>C: access token (aud=spark-connect)
-    Note over C: three clients, one unchanged server<br/>each pins user_id to the JWT sub<br/>and supplies its own operation_id
-    C->>S: ExecutePlan + x-user-token + x-correlation-id
-    Note over S: validate JWT (cached JWKS)<br/>user_id == sub? session owned by sub?
+    Note over Py,Rs: one token cache between them, so signing in<br/>with any client signs you in for all three
+
+    alt from Python
+        K-->>Py: access token (aud=spark-connect)
+        Py->>S: ExecutePlan + x-user-token + x-correlation-id
+        Note over Py: operation_id: patched private method
+    else from the JVM
+        K-->>Jv: access token (aud=spark-connect)
+        Jv->>S: ExecutePlan + x-user-token + x-correlation-id
+        Note over Jv: operation_id: ClientInterceptor rewrites the message
+    else from Rust
+        K-->>Rs: access token (aud=spark-connect)
+        Rs->>S: ExecutePlan + x-user-token + x-correlation-id
+        Note over Rs: operation_id: the crate already sets it
+    end
+
+    Note over S: nothing below here changes with the client<br/>validate JWT (cached JWKS)<br/>user_id == sub? session owned by sub?
     S->>K: RFC 8693 exchange (audience=polaris)
     K-->>S: token (aud=polaris, principal_name=alice)
     Note over S: park identity, keyed by operation + session
