@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.sparkconnect</groupId>
+  <artifactId>spark-connect-propagation-client</artifactId>
+  <version>0.1.0</version>
+  <packaging>jar</packaging>
+  <name>Spark Connect propagation client (JVM)</name>
+  <description>
+    The JVM twin of the Python spark_connect_propagation package: opens a Spark Connect session
+    that carries a user's OIDC token and a correlation ID on every RPC.
+  </description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>21</maven.compiler.release>
+    <spark.version>4.1.3</spark.version>
+    <scala.binary.version>2.13</scala.binary.version>
+    <nimbus.version>10.10</nimbus.version>
+  </properties>
+
+  <dependencies>
+    <!--
+      A hard dependency, not `provided`, because this package IS a Spark Connect client — the
+      same call the Python package makes by depending on pyspark-client outright.
+
+      The published artifact is already shaded: gRPC lives at org.sparkproject.io.grpc.*, NOT
+      io.grpc.*, so our ClientInterceptor implements the relocated interface. Note that prefix
+      differs from the SERVER's (org.sparkproject.connect.grpc.*) — the two jars relocate the
+      same library to two different places. See FINDINGS.md.
+
+      org.apache.spark.connect.proto.* is not relocated, so the request classes keep their
+      documented names; only the protobuf runtime under them moves.
+    -->
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-connect-client-jvm_${scala.binary.version}</artifactId>
+      <version>${spark.version}</version>
+    </dependency>
+
+    <!--
+      JSON and JWT parsing. The Python client gets both from the standard library; on the JVM
+      there is no stdlib JSON, and we need to read the `sub` claim out of an access token anyway.
+      HTTP is java.net.http from the JDK, so no HTTP client is pulled in.
+    -->
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>${nimbus.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.11.4</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>${project.artifactId}-${project.version}</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <!--
+            The integration test needs the compose stack and the /etc/hosts aliases. It is
+            excluded by default and enabled with -Pit, so `mvn test` stays hermetic.
+          -->
+          <excludes>
+            <exclude>**/*IT.java</exclude>
+          </excludes>
+          <!--
+            Spark Connect returns results as Arrow batches, and Arrow reaches into java.nio
+            reflectively. On Java 17+ that is encapsulated, so without this the first collect()
+            dies with "Could not initialize class ...arrow.memory.util.MemoryUtil" - which names
+            neither Arrow's real problem nor the flag that fixes it. Anything embedding this
+            library needs the same flags; see the README.
+          -->
+          <argLine>
+            --add-opens=java.base/java.nio=ALL-UNNAMED
+            -Dio.netty.tryReflectionSetAccessible=true
+          </argLine>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <profile>
+      <id>it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <excludes combine.self="override"/>
+              <!--
+                Surefire's default includes are Test*/*Test/*Tests/*TestCase, none of which match
+                *IT, so naming the file is not enough to make it run.
+              -->
+              <includes>
+                <include>**/*Test.java</include>
+                <include>**/*IT.java</include>
+              </includes>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>

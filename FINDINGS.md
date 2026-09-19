@@ -213,3 +213,49 @@ and the decoded session policy is narrowed to a single table's prefix:
 
 Since no Spark container holds any S3 credential at all, a successful read from the worker JVM
 can only have used credentials vended for the authenticated user.
+
+## 12. The JVM Connect client shades gRPC to a *different* package than the server
+
+Writing the same client twice, once in Python and once in Java, put the two clients' constraints
+side by side. The JVM one is the easier of the two, with one trap.
+
+**The relocation prefix is not the server's.** §1 established that `spark-connect` puts gRPC at
+`org.sparkproject.connect.grpc`. `spark-connect-client-jvm` puts it somewhere else again:
+
+```
+$ unzip -l spark-connect-client-jvm_2.13-4.1.3.jar | grep -c " io/grpc/"
+0
+$ unzip -l spark-connect-client-jvm_2.13-4.1.3.jar | grep -oE 'org/sparkproject/io/[a-z]+/' | sort -u
+org/sparkproject/io/grpc/
+org/sparkproject/io/netty/
+org/sparkproject/io/perfmark/
+```
+
+So a client interceptor implements `org.sparkproject.io.grpc.ClientInterceptor` while a server
+interceptor implements `org.sparkproject.connect.grpc.ServerInterceptor`. The two cannot share a
+superinterface, an abstract base or a `Metadata.Key`, even though both are "gRPC".
+
+**Everything else is public API,** which PySpark cannot say:
+
+* `SparkConnectClient.builder().interceptor(...)` and `SparkSession.builder().client(...)` are
+  both public, so injecting an interceptor needs no custom channel builder.
+* Scala's static forwarders make `SparkConnectClient.builder()` and
+  `SparkSession.builder()` callable from plain Java, and `SparkConnectClient.Builder` resolves as
+  an ordinary nested type — no `MODULE$` gymnastics.
+* One `ClientInterceptor` covers every RPC shape. PySpark needs a separate implementation for
+  unary-unary and unary-stream, and silently leaves half the traffic unauthenticated if you
+  implement only one.
+* `ExecutePlanRequest.operation_id` (§5) can be filled in by rewriting the outgoing message in
+  `sendMessage`, which is ordinary interceptor work. On the Python side the same thing needs a
+  patched private method.
+
+**The trap is Arrow, not Connect.** Results come back as Arrow batches, and Arrow reaches into
+`java.nio` reflectively, which Java 17+ encapsulates. Without
+
+```
+--add-opens=java.base/java.nio=ALL-UNNAMED -Dio.netty.tryReflectionSetAccessible=true
+```
+
+the first `collect()` fails with `Could not initialize class
+org.sparkproject.org.apache.arrow.memory.util.MemoryUtil`, followed by a misleading "Memory was
+leaked by query" on close. Neither message names the real problem or the flag that fixes it.

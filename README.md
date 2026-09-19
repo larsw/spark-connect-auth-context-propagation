@@ -8,7 +8,7 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-**Status:** complete and verified. 19 end-to-end checks against the live stack, plus 41 unit tests.
+**Status:** complete and verified. 24 end-to-end checks against the live stack, plus 69 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and
 [TODO.md](TODO.md) for the full decision record.
 
@@ -25,6 +25,7 @@ See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstre
 | **Correlation** | One UUID appears in the PySpark client, the Spark Connect server and Polaris, including on failures |
 | **Session integrity** | A client claiming another user's `user_id`/`session_id` is refused — a gap Spark Connect leaves open by default |
 | **The same identity in a UI** | The Apache Polaris console signs in as alice or bob through the same realm, and renders only what that user may see |
+| **Two client languages** | The Python and JVM clients present the same headers, correlation scoping and client-minted operation ids to one unchanged server |
 
 ## Quickstart
 
@@ -38,7 +39,8 @@ make test        # full suite on the host
 
 `make test-unit` runs the client unit tests with no stack, no docker and no network.
 `make test-container` runs the full suite inside the compose network, needing no host setup at
-all. Between them: 26 unit tests, 19 end-to-end, and 15 Java tests via `make jar`.
+all. Between them: 26 Python unit tests, 19 end-to-end, 15 Java plugin tests via `make jar`, and
+28 JVM client tests via `make test-jvm` (five more run against the stack with `make test-jvm-it`).
 
 `install.sh` never runs a privileged command on its own. It prints exactly what it wants to do
 and waits for a `y`. `--check` reports without changing anything, `--print-only` shows the
@@ -94,7 +96,7 @@ usable only because the client fills in `operation_id`, which PySpark leaves to 
 
 ```
 install.sh              toolchain and /etc/hosts preflight; prompts before sudo
-Makefile                install / build / up / bootstrap / demo / test-unit / test / cid / down
+Makefile                install / build / up / demo / test / test-jvm / client-jar / cid / down
 compose.yaml            keycloak, minio (+audit sink), polaris, spark master/worker/connect
 docker/keycloak/        realm: alice, bob, four clients, audience and claim mappers
 docker/polaris/         idempotent bootstrap: catalog, namespaces, principals, grants
@@ -102,6 +104,7 @@ docker/polaris-console/ builds the Apache Polaris web console from pinned upstre
 docker/spark/           image, spark-defaults.conf, log4j2.properties, role entrypoint
 server/                 the Java plugin (one Maven module, one jar)
 client/                 the PySpark client package
+client-jvm/             the same client for the JVM, in Java (Maven)
 demo/  tests/           walkthrough and verification suite
 ```
 
@@ -145,6 +148,51 @@ interceptor can only file what it knows under the session. `connect()` patches
 lets the server key per operation instead; pass `per_operation_ids=False` for a stock client. If a
 future PySpark renames that method the patch is skipped, and the server falls back to keying by
 session.
+
+### The JVM client
+
+`client-jvm/` is the same client for the JVM, in Java, published as
+`io.sparkconnect:spark-connect-propagation-client:0.1.0` (`make client-jar` installs it locally).
+It talks to the same server, presents the same headers and shares the device-flow token cache with
+the Python one, so signing in with either signs you in for both.
+
+```java
+SparkSession spark = PropagatingSession.connect(
+    "sc://spark-connect:15002",
+    new DeviceCodeTokenProvider(new Endpoints("http://keycloak:8080/realms/spark"), "spark-cli"));
+
+try (CorrelationId.Scope scope = CorrelationId.scope()) {
+    spark.sql("SELECT * FROM polaris.shared.events").show();
+    System.out.println("trace it: " + scope.id());
+}
+```
+
+`PropagatingSession.builder(remote, provider)` takes the options: `sharedSecret` (defaults to
+`CONNECT_SHARED_SECRET`), `sessionCorrelationId`, `perOperationIds`, and the two header names.
+
+Three things differ from the Python client, none of them by choice:
+
+* **Every seam is public.** `SparkConnectClient.builder().interceptor(...)` and
+  `SparkSession.builder().client(...)` are public API, and rewriting an outgoing message is
+  ordinary gRPC interceptor work — so `operation_id` is set without the private patch PySpark
+  forces. One `ClientInterceptor` also covers every RPC shape, where PySpark needs one
+  implementation per shape and silently leaves half the traffic unauthenticated if you forget one.
+* **gRPC is relocated somewhere else.** The client jar puts it at `org.sparkproject.io.grpc.*`,
+  which is *not* the server jar's `org.sparkproject.connect.grpc.*`. The two Spark artifacts shade
+  the same library to two different packages, so a client and a server interceptor cannot share a
+  superinterface.
+* **It needs JVM flags.** Spark Connect returns Arrow batches, and Arrow reaches into `java.nio`
+  reflectively, which Java 17+ encapsulates. Anything embedding this library needs
+
+  ```
+  --add-opens=java.base/java.nio=ALL-UNNAMED -Dio.netty.tryReflectionSetAccessible=true
+  ```
+
+  or the first `collect()` fails with `Could not initialize class ...arrow.memory.util.MemoryUtil`,
+  which names neither the real problem nor the fix. The build sets them for its own tests.
+
+`make test-jvm` runs its unit tests with no stack at all; `make test-jvm-it` runs it against the
+live stack, asserting the same claims the Python suite does.
 
 ## The Polaris console
 

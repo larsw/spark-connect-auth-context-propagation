@@ -17,13 +17,13 @@ JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
 
 .DEFAULT_GOAL := help
-.PHONY: help install jar build up bootstrap demo test-unit test test-container logs cid ps down clean
+.PHONY: help install jar client-jar build up bootstrap demo test-unit test test-jvm test-jvm-it test-container logs cid ps down clean
 
 help: ## Show this help
 	@echo "Spark Connect propagation PoC"
 	@echo
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[1m%-12s\033[0m %s\n", $$1, $$2}'
+	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[1m%-15s\033[0m %s\n", $$1, $$2}'
 	@echo
 
 install: ## Check the toolchain and /etc/hosts aliases (prompts before anything privileged)
@@ -34,6 +34,10 @@ jar: ## Build the Java plugin jar and stage it for the image
 	@mkdir -p docker/spark/jars
 	@cp $(JAR_SRC) $(JAR_DST)
 	@echo "staged $(JAR_DST)"
+
+client-jar: ## Build the JVM client library and install it into the local Maven repo
+	@mvn -q -f client-jvm/pom.xml install
+	@echo "installed io.sparkconnect:spark-connect-propagation-client:0.1.0"
 
 build: jar ## Build the plugin jar and the Spark image
 	@$(COMPOSE) build
@@ -67,6 +71,12 @@ test-unit: ## Fast client unit tests -- no stack, no docker, no network
 test: ## Full suite on the host (needs ./install.sh for the /etc/hosts aliases)
 	@cd client && uv run pytest ../tests -v
 
+test-jvm: ## JVM client unit tests -- no stack, no docker, no network
+	@mvn -q -f client-jvm/pom.xml test
+
+test-jvm-it: ## JVM client against the live stack (needs make up and ./install.sh)
+	@mvn -B -f client-jvm/pom.xml test -Pit
+
 test-container: ## Full suite inside the compose network (no host setup needed)
 	@$(COMPOSE) --profile tools build client
 	@$(COMPOSE) run --rm --entrypoint python client -m pytest /work/tests -v
@@ -88,6 +98,6 @@ down: ## Stop the stack and remove volumes
 	@$(COMPOSE) down -v --remove-orphans
 
 clean: down ## Stop everything and remove build output
-	@rm -rf server/target
+	@rm -rf server/target client-jvm/target
 	@rm -f docker/spark/jars/*.jar
 	@echo "cleaned"
