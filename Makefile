@@ -9,7 +9,7 @@ JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
 
 .DEFAULT_GOAL := help
-.PHONY: help install jar build up bootstrap demo test test-container logs cid ps down clean
+.PHONY: help install jar build up bootstrap demo test-unit test test-container logs cid ps down clean
 
 help: ## Show this help
 	@echo "Spark Connect propagation PoC"
@@ -53,12 +53,15 @@ bootstrap: ## Re-run the Polaris catalog/principal/grant bootstrap (idempotent)
 demo: ## Interactive two-user walkthrough (device flow; opens a browser URL)
 	@cd client && uv run python ../demo/demo.py
 
-test: ## Headless pytest suite on the host (needs ./install.sh for the /etc/hosts aliases)
-	@cd client && uv run pytest ../tests/test_propagation.py -v
+test-unit: ## Fast client unit tests -- no stack, no docker, no network
+	@cd client && uv run pytest ../tests/test_client_unit.py -q
 
-test-container: ## Same suite, run inside the compose network (no host setup needed)
+test: ## Full suite on the host (needs ./install.sh for the /etc/hosts aliases)
+	@cd client && uv run pytest ../tests -v
+
+test-container: ## Full suite inside the compose network (no host setup needed)
 	@$(COMPOSE) --profile tools build client
-	@$(COMPOSE) run --rm --entrypoint python client -m pytest /work/tests/test_propagation.py -v
+	@$(COMPOSE) run --rm --entrypoint python client -m pytest /work/tests -v
 
 logs: ## Follow logs from every service
 	@$(COMPOSE) logs -f

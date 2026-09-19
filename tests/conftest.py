@@ -40,22 +40,6 @@ def bob():
     session.stop()
 
 
-@pytest.fixture(scope="session", autouse=True)
-def seed(alice):
-    """alice seeds the tables through Spark Connect, exercising the write path for real."""
-    alice.sql("DROP TABLE IF EXISTS polaris.shared.events").collect()
-    alice.sql("CREATE TABLE polaris.shared.events (id BIGINT, kind STRING) USING iceberg").collect()
-    alice.sql(
-        "INSERT INTO polaris.shared.events VALUES (1,'login'),(2,'logout'),(3,'purchase')"
-    ).collect()
-
-    alice.sql("DROP TABLE IF EXISTS polaris.restricted.salaries").collect()
-    alice.sql(
-        "CREATE TABLE polaris.restricted.salaries (person STRING, amount BIGINT) USING iceberg"
-    ).collect()
-    alice.sql("INSERT INTO polaris.restricted.salaries VALUES ('alice',100),('bob',90)").collect()
-
-
 def compose_logs(service: str) -> str:
     """Logs of one compose service.
 

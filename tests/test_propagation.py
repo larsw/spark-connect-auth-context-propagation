@@ -26,6 +26,26 @@ from conftest import (
 )
 
 
+@pytest.fixture(scope="module", autouse=True)
+def seed(alice):
+    """alice seeds the tables through Spark Connect, exercising the write path for real.
+
+    Module-scoped rather than in conftest: an autouse session fixture there would also fire for
+    the unit tests, which are meant to run with no stack at all.
+    """
+    alice.sql("DROP TABLE IF EXISTS polaris.shared.events").collect()
+    alice.sql("CREATE TABLE polaris.shared.events (id BIGINT, kind STRING) USING iceberg").collect()
+    alice.sql(
+        "INSERT INTO polaris.shared.events VALUES (1,'login'),(2,'logout'),(3,'purchase')"
+    ).collect()
+
+    alice.sql("DROP TABLE IF EXISTS polaris.restricted.salaries").collect()
+    alice.sql(
+        "CREATE TABLE polaris.restricted.salaries (person STRING, amount BIGINT) USING iceberg"
+    ).collect()
+    alice.sql("INSERT INTO polaris.restricted.salaries VALUES ('alice',100),('bob',90)").collect()
+
+
 # --------------------------------------------------------------- authorisation --
 
 def test_both_users_read_the_shared_table(alice, bob):

@@ -32,8 +32,12 @@ See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstre
 make build       # builds the Java plugin and the Spark image
 make up          # starts the stack and waits for it
 make demo        # interactive two-user walkthrough (device flow, opens a browser URL)
-make test        # headless suite
+make test        # full suite on the host
 ```
+
+`make test-unit` runs the client unit tests with no stack, no docker and no network.
+`make test-container` runs the full suite inside the compose network, needing no host setup at
+all. Between them: 17 unit tests, 11 end-to-end, and 10 Java tests via `make jar`.
 
 `install.sh` never runs a privileged command on its own. It prints exactly what it wants to do
 and waits for a `y`. `--check` reports without changing anything, `--print-only` shows the
