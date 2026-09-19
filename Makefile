@@ -17,7 +17,7 @@ JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
 
 .DEFAULT_GOAL := help
-.PHONY: help install jar client-jar client-rust build up bootstrap demo demo-jvm test-unit test test-jvm test-jvm-it test-rust test-rust-it test-container logs cid ps down clean
+.PHONY: help install jar client-jar client-rust build up bootstrap demo demo-jvm demo-rust test-unit test test-jvm test-jvm-it test-rust test-rust-it test-container logs cid ps down clean
 
 help: ## Show this help
 	@echo "Spark Connect propagation PoC"
@@ -71,6 +71,9 @@ demo: ## Interactive two-user walkthrough (device flow; opens a browser URL)
 demo-jvm: client-jar ## The same walkthrough, driven by the JVM client instead of the Python one
 	@mvn -q -f demo/java/pom.xml compile exec:exec
 
+demo-rust: ## The same walkthrough again, driven by the Rust client
+	@cargo run -q --manifest-path demo/rust/Cargo.toml
+
 test-unit: ## Fast client unit tests -- no stack, no docker, no network
 	@cd client && uv run pytest ../tests/test_client_unit.py -q
 
@@ -110,6 +113,6 @@ down: ## Stop the stack and remove volumes
 	@$(COMPOSE) down -v --remove-orphans
 
 clean: down ## Stop everything and remove build output
-	@rm -rf server/target client-jvm/target client-rust/target
+	@rm -rf server/target client-jvm/target client-rust/target demo/rust/target
 	@rm -f docker/spark/jars/*.jar
 	@echo "cleaned"

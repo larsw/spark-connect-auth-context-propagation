@@ -1,0 +1,20 @@
+[package]
+name = "spark-connect-propagation-demo"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "The Rust twin of demo/demo.py"
+
+[[bin]]
+name = "demo"
+path = "src/main.rs"
+
+[dependencies]
+# A path dependency rather than a module inside the client, so running the demo also exercises
+# the crate the way anyone else would consume it, and keeps demo printing out of the library.
+spark-connect-propagation-client = { path = "../../client-rust" }
+
+spark-connect-rs = "0.0.2"
+# Must be the same major as the one spark-connect-rs pulls in, so RecordBatch is the same type.
+arrow = { version = "53", features = ["prettyprint"] }
+tokio = { version = "1", features = ["full"] }

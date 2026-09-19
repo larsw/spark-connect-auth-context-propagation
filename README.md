@@ -35,6 +35,7 @@ make build       # builds the Java plugin and the Spark image
 make up          # starts the stack and waits for it
 make demo        # interactive two-user walkthrough (device flow, opens a browser URL)
 make demo-jvm    # the same walkthrough, driven by the JVM client
+make demo-rust   # ... and by the Rust client
 make test        # full suite on the host
 ```
 
@@ -108,7 +109,7 @@ server/                 the Java plugin (one Maven module, one jar)
 client/                 the PySpark client package
 client-jvm/             the same client for the JVM, in Java (Maven)
 client-rust/            the same client in Rust, on the spark-connect-rs crate (Cargo)
-demo/                   the walkthrough: demo.py, and java/ for the same thing on the JVM
+demo/                   the walkthrough: demo.py, and java/ + rust/ for the same thing again
 tests/                  the verification suite
 ```
 
@@ -241,7 +242,13 @@ correlation ID — and the crate exposes no `correlation_id()` block, rather tha
 silently does nothing.
 
 `make test-rust` runs its unit tests with no stack at all; `make test-rust-it` runs it against the
-live stack.
+live stack, and `make demo-rust` is the same walkthrough as `make demo`, driven by this client.
+Like `demo/java/`, `demo/rust/` is a separate package that depends on the client rather than a
+module inside it, so running it also proves the crate is consumable from outside.
+
+The one visible difference between the three demos: this one mints its correlation ID *before*
+signing anyone in, because the ID has to be in hand when the session is opened. The other two open
+a scope around the queries instead.
 
 ## The Polaris console
 
