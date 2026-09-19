@@ -191,7 +191,9 @@ services:
       VITE_OIDC_REDIRECT_URI: "http://polaris-console:3000/auth/callback"
       VITE_OIDC_SCOPE: "openid profile email"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/health >/dev/null 2>&1 || exit 1"]
+      # 127.0.0.1, not localhost: busybox wget resolves localhost to ::1 first and nginx here
+      # listens on IPv4 only, so the check fails while the site is perfectly healthy.
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1/health"]
       interval: 5s
       timeout: 3s
       retries: 12
