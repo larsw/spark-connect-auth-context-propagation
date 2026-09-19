@@ -17,7 +17,7 @@ JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
 
 .DEFAULT_GOAL := help
-.PHONY: help install jar client-jar build up bootstrap demo demo-jvm test-unit test test-jvm test-jvm-it test-container logs cid ps down clean
+.PHONY: help install jar client-jar client-rust build up bootstrap demo demo-jvm test-unit test test-jvm test-jvm-it test-rust test-rust-it test-container logs cid ps down clean
 
 help: ## Show this help
 	@echo "Spark Connect propagation PoC"
@@ -38,6 +38,9 @@ jar: ## Build the Java plugin jar and stage it for the image
 client-jar: ## Build the JVM client library and install it into the local Maven repo
 	@mvn -q -f client-jvm/pom.xml install
 	@echo "installed io.sparkconnect:spark-connect-propagation-client:0.1.0"
+
+client-rust: ## Build the Rust client crate
+	@cargo build --manifest-path client-rust/Cargo.toml
 
 build: jar ## Build the plugin jar and the Spark image
 	@$(COMPOSE) build
@@ -80,6 +83,12 @@ test-jvm: ## JVM client unit tests -- no stack, no docker, no network
 test-jvm-it: ## JVM client against the live stack (needs make up and ./install.sh)
 	@mvn -B -f client-jvm/pom.xml test -Pit
 
+test-rust: ## Rust client unit tests -- no stack, no docker, no network
+	@cargo test --manifest-path client-rust/Cargo.toml
+
+test-rust-it: ## Rust client against the live stack (needs make up and ./install.sh)
+	@cargo test --manifest-path client-rust/Cargo.toml -- --ignored
+
 test-container: ## Full suite inside the compose network (no host setup needed)
 	@$(COMPOSE) --profile tools build client
 	@$(COMPOSE) run --rm --entrypoint python client -m pytest /work/tests -v
@@ -101,6 +110,6 @@ down: ## Stop the stack and remove volumes
 	@$(COMPOSE) down -v --remove-orphans
 
 clean: down ## Stop everything and remove build output
-	@rm -rf server/target client-jvm/target
+	@rm -rf server/target client-jvm/target client-rust/target
 	@rm -f docker/spark/jars/*.jar
 	@echo "cleaned"

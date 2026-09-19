@@ -8,7 +8,7 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-**Status:** complete and verified. 24 end-to-end checks against the live stack, plus 69 unit tests.
+**Status:** complete and verified. 29 end-to-end checks against the live stack, plus 83 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and
 [TODO.md](TODO.md) for the full decision record.
 
@@ -25,7 +25,7 @@ See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstre
 | **Correlation** | One UUID appears in the PySpark client, the Spark Connect server and Polaris, including on failures |
 | **Session integrity** | A client claiming another user's `user_id`/`session_id` is refused — a gap Spark Connect leaves open by default |
 | **The same identity in a UI** | The Apache Polaris console signs in as alice or bob through the same realm, and renders only what that user may see |
-| **Two client languages** | The Python and JVM clients present the same headers, correlation scoping and client-minted operation ids to one unchanged server |
+| **Three client languages** | The Python, JVM and Rust clients present the same headers and client-minted operation ids to one unchanged server |
 
 ## Quickstart
 
@@ -41,7 +41,8 @@ make test        # full suite on the host
 `make test-unit` runs the client unit tests with no stack, no docker and no network.
 `make test-container` runs the full suite inside the compose network, needing no host setup at
 all. Between them: 26 Python unit tests, 19 end-to-end, 15 Java plugin tests via `make jar`, and
-28 JVM client tests via `make test-jvm` (five more run against the stack with `make test-jvm-it`).
+28 JVM client tests via `make test-jvm` and 14 Rust ones via `make test-rust` (each has five more
+that run against the stack, with `make test-jvm-it` and `make test-rust-it`).
 
 `install.sh` never runs a privileged command on its own. It prints exactly what it wants to do
 and waits for a `y`. `--check` reports without changing anything, `--print-only` shows the
@@ -106,6 +107,7 @@ docker/spark/           image, spark-defaults.conf, log4j2.properties, role entr
 server/                 the Java plugin (one Maven module, one jar)
 client/                 the PySpark client package
 client-jvm/             the same client for the JVM, in Java (Maven)
+client-rust/            the same client in Rust, on the spark-connect-rs crate (Cargo)
 demo/                   the walkthrough: demo.py, and java/ for the same thing on the JVM
 tests/                  the verification suite
 ```
@@ -201,6 +203,45 @@ that depends on the published artifact, so running it also proves the library is
 way anyone else would consume it. Both demos print the same walkthrough from the same unchanged
 server, and because they share the token cache, whichever one you ran last leaves the other
 already signed in.
+
+### The Rust client
+
+`client-rust/` is the third one, built on the [`spark-connect-rs`](https://crates.io/crates/spark-connect-rs)
+crate. Same server, same headers, same `user_id` pinned to the JWT subject, and the same token
+cache file as the other two.
+
+```rust
+let provider = PasswordGrantTokenProvider::new(
+    Endpoints::new("http://keycloak:8080/realms/spark"), "spark-cli", "alice", "alice");
+
+let spark = connect("sc://spark-connect:15002", &provider).await?;
+spark.sql("SELECT * FROM polaris.shared.events").await?.show(Some(5), None, None).await?;
+```
+
+Two differences, and they run in opposite directions.
+
+**It is the only one that needed nothing done about `operation_id`.** The crate already mints a
+fresh UUID4 per ExecutePlan, which is exactly what the Python client needs a patched private
+method for and the JVM client does with an interceptor. `make test-rust-it` asserts it, by
+checking the server never logs `operation <server-generated>` for this client.
+
+**It is the only one that cannot scope a correlation ID to a block.** The crate's session type is
+fixed to one concrete middleware:
+
+```rust
+pub type SparkClient = SparkConnectClient<HeadersMiddleware<Channel>>;
+```
+
+and that middleware's headers are a `HashMap` captured when it is built, so a tonic interceptor or
+a tower layer of our own would be a different type and would not fit a `SparkSession`. Headers are
+therefore fixed for a session's life, which costs two things the others have: the token cannot be
+re-read per RPC, so a session lasts as long as the token that opened it; and the correlation ID
+cannot vary per call. The unit of scoping here is the session — `connect_with` takes the
+correlation ID — and the crate exposes no `correlation_id()` block, rather than offering one that
+silently does nothing.
+
+`make test-rust` runs its unit tests with no stack at all; `make test-rust-it` runs it against the
+live stack.
 
 ## The Polaris console
 

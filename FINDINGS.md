@@ -259,3 +259,51 @@ superinterface, an abstract base or a `Metadata.Key`, even though both are "gRPC
 the first `collect()` fails with `Could not initialize class
 org.sparkproject.org.apache.arrow.memory.util.MemoryUtil`, followed by a misleading "Memory was
 leaked by query" on close. Neither message names the real problem or the flag that fixes it.
+
+## 13. The Rust client is the only one that fills in `operation_id`, and the only one that cannot scope a correlation ID
+
+Writing the client a third time, on [`spark-connect-rs`](https://crates.io/crates/spark-connect-rs)
+0.0.2, sharpened §5 from both ends.
+
+**It already does the thing PySpark will not.** `SparkConnectClient::execute_plan_request_with_metadata`
+mints an id per call:
+
+```rust
+let operation_id = Uuid::new_v4().to_string();
+self.operation_id = Some(operation_id.clone());
+// ...
+operation_id: Some(operation_id),
+```
+
+So of the three clients, the least mature one is the only one correct out of the box: PySpark
+needs a patched private method, the JVM client needs an interceptor that rewrites the outgoing
+message, and Rust needs nothing. The server-side per-operation keying works for it immediately,
+which the integration test checks by asserting the server never logs
+`operation <server-generated>` for this client.
+
+**Its session type closes the generic, so headers cannot vary per RPC.** The crate is generic
+right up until the point it matters:
+
+```rust
+pub struct SparkConnectClient<T> { /* ... */ }
+pub type SparkClient = SparkConnectClient<HeadersMiddleware<Channel>>;
+pub struct SparkSession { client: SparkClient, /* ... */ }
+```
+
+`HeadersMiddleware` holds a `HashMap<String, String>` captured when it is built, and
+`SparkSession` accepts no other service type — so a tonic interceptor
+(`InterceptedService<Channel, F>`) or a tower layer of our own is simply a different type and
+cannot be used. `SparkSessionBuilder::create_client` is private and hardcodes the layer. Upstream
+`main` has not changed this.
+
+The consequences are exactly two, and they are the two dynamic things the other clients do: the
+token cannot be re-read per RPC (a session lasts as long as the token that opened it), and the
+correlation ID cannot be narrowed to a block. `Config` — which is public and does take `headers`,
+`user_id` and `session_id` — is enough for everything static, so the client is built on that and
+scopes correlation by session instead of pretending to offer a block.
+
+**Two smaller things.** The published crate carries Spark **3.5** protos and still drives a 4.1.3
+server for everything here, the Connect protocol being backwards compatible. And 0.0.2 renders the
+gRPC status as `Unauthenicated` (sic) in its `Display` impl, so a caller matching on the rendered
+string is matching a typo; it is fixed on `main` but not released, and matching the variant, or the
+server's own message, avoids the question.
