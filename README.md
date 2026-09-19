@@ -378,7 +378,7 @@ boundary the whole PoC is about, met from the other side: a catalog that authori
 only be read by something that *is* a user, and a collector running beside the query on its own
 thread deliberately is not one. Giving the collector a service identity would fix it and would put
 back the ambient credential this PoC exists to show you do not need. [FINDINGS.md](FINDINGS.md)
-§14 lays out the three ways out and what each costs.
+§15 lays out the three ways out and what each costs.
 
 Each failed resolution is a 401, which Iceberg logs with a stack trace, so the Spark Connect log
 carries roughly 76 of them per `make test`. That noise is left in deliberately: the only logger

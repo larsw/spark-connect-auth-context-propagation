@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
  * listener picks it up with no extra configuration.
  *
  * <p><strong>Why this is not simply a ThreadLocal read.</strong> OpenLineage's listener runs on the
- * listener bus thread, which carries no Connect job tag — that is the whole of finding #14, and the
+ * listener bus thread, which carries no Connect job tag — that is the whole of finding #15, and the
  * reason dataset resolution fails here. What rescues the correlation ID is that
  * {@link SparkListenerJobStart} carries the submitting thread's local properties along with it, and
  * {@code spark.job.tags} is one of them. So the tag that does not survive as a ThreadLocal does

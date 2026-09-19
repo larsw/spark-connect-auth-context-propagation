@@ -6,6 +6,7 @@ environment so the same tests serve both.
 """
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import subprocess
@@ -43,6 +44,45 @@ def require_shared_secret() -> str:
             returncode=2,
         )
     return secret
+
+
+#: Every short-lived session this suite opens, kept alive on purpose. See :func:`disposed`.
+_RETAINED: list = []
+
+
+@contextlib.contextmanager
+def disposed(session, *, release: bool = True):
+    """Close a short-lived session here and now, and never let the collector finalise it.
+
+    This is not tidiness, it is a deadlock fix, and it takes both halves.
+
+    PySpark's ``SparkSession.__del__`` calls ``client.close()``, which calls
+    ``ExecutePlanResponseReattachableIterator.shutdown()``. That pool is a **class variable** --
+    one ``ThreadPoolExecutor`` shared by every session in the process -- and ``shutdown()`` joins
+    its threads. So finalising *any* session, even one already stopped, joins threads that other
+    live sessions are using.
+
+    Now let that finaliser run at a collector's whim while this thread sits inside a gRPC call,
+    holding the channel's state lock in ``grpc._channel._blocking``. The threads being joined
+    cannot finish, because they need that same lock to send their own ReleaseExecute. The joining
+    thread waits in ``join``; the pool threads wait on the lock; nothing moves. It hung this suite
+    about one run in four, in whichever test happened to be running when the collection landed.
+
+    Stopping explicitly is the easy half. The hard half is that a stopped session is still an
+    object with a ``__del__``, so it is retained here and finalised at interpreter exit, when
+    there is no RPC in flight for it to deadlock against.
+
+    ``release=False`` closes the client without ``stop()``: the impostor session carries *alice's*
+    session id, so a ``stop()`` would release her live server-side session as a side effect.
+    """
+    _RETAINED.append(session)
+    try:
+        yield session
+    finally:
+        if release:
+            session.stop()
+        else:
+            session.client.close()
 
 
 @pytest.fixture(scope="session")

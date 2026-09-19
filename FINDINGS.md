@@ -308,7 +308,61 @@ gRPC status as `Unauthenicated` (sic) in its `Display` impl, so a caller matchin
 string is matching a typo; it is fixed on `main` but not released, and matching the variant, or the
 server's own message, avoids the question.
 
-## 14. Per-user catalog auth and out-of-band lineage collection are in direct conflict
+## 14. PySpark's session finaliser shuts down a process-wide thread pool, and can deadlock against gRPC
+
+This one cost an afternoon of "flaky test" before it turned out to be a real, reproducible
+deadlock with nothing to do with the test that kept hanging.
+
+`SparkSession.__del__` calls `client.close()`, which calls
+`ExecutePlanResponseReattachableIterator.shutdown()`:
+
+```python
+_release_thread_pool_instance: Optional[ThreadPoolExecutor] = None   # a CLASS variable
+
+@classmethod
+def shutdown(cls) -> None:
+    with cls._lock:
+        if cls._release_thread_pool_instance is not None:
+            thread_pool = cls._release_thread_pool_instance
+            cls._release_thread_pool_instance = None
+            thread_pool.shutdown()          # joins every worker
+```
+
+Two facts collide there. The pool is a **class variable**, one executor shared by every session in
+the process — so finalising *any* session, including one already stopped, tears it down for all of
+them. And `shutdown()` **joins** those workers.
+
+Now let the collector run that finaliser while the current thread is inside a gRPC call, holding
+the channel state lock in `grpc._channel._blocking`. The workers being joined each need that same
+lock to send their own ReleaseExecute. The joining thread waits in `join`, the pool threads wait
+on the lock, and the process stops. `pytest --timeout-method=thread` shows it exactly:
+
+```
+MainThread:
+  ... test .collect() -> grpc/_interceptor.py -> grpc/_channel.py:1136 _blocking
+      -> pyspark/sql/connect/session.py:878 __del__        <- collector ran here
+      -> client/reattach.py:84 shutdown -> thread.py:239 shutdown -> threading.py:1095 join
+ThreadPoolExecutor-3_0..3:
+  ... reattach.py:211 target -> grpc/_channel.py:1152 _blocking -> threading.py:304 __enter__
+```
+
+It hung this suite roughly one run in four, always in whichever test happened to be running when
+the collection landed — which is why it looked like a concurrency bug in the one test that runs
+concurrent queries. It was not; that test was just the slowest and so the likeliest to be caught.
+
+**Stopping sessions explicitly is only half a fix.** A stopped session is still an object with a
+`__del__`, so the finaliser still runs later, still calls the class-level `shutdown()`, and can
+still land inside someone else's RPC. Tried that first: it went from 1 failure in 4 runs to 1 in
+15, which is worse than either fixing it or leaving it alone, because it looks fixed.
+
+What actually fixes it is denying the collector the opportunity: every short-lived session is
+stopped *and* retained for the life of the process, so its finaliser runs at interpreter exit with
+no RPC in flight. 45 consecutive clean runs, from about 1 in 4 hanging.
+
+Anything long-lived that opens Spark Connect sessions and lets them go out of scope has this
+hazard. It is not specific to tests.
+
+## 15. Per-user catalog auth and out-of-band lineage collection are in direct conflict
 
 Adding OpenLineage turned the thread-boundary problem of §4 around and pointed it back at us.
 

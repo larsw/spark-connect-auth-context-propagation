@@ -17,6 +17,7 @@ from spark_connect_propagation import (
 )
 from conftest import (
     REMOTE,
+    disposed,
     audit_available,
     audit_events_since,
     audit_offset,
@@ -96,25 +97,25 @@ def test_concurrent_users_do_not_leak_into_each_other(alice, bob):
 
 def test_missing_token_is_rejected():
     """D5: no credential means UNAUTHENTICATED at the edge, not a confusing failure later."""
-    session = connect(REMOTE, StaticTokenProvider(""))
-    with pytest.raises(SparkConnectGrpcException) as caught:
-        session.sql("SELECT 1").collect()
+    with disposed(connect(REMOTE, StaticTokenProvider(""))) as session:
+        with pytest.raises(SparkConnectGrpcException) as caught:
+            session.sql("SELECT 1").collect()
     assert "UNAUTHENTICATED" in str(caught.value)
 
 
 def test_malformed_token_is_rejected():
-    session = connect(REMOTE, StaticTokenProvider("not-a-jwt"))
-    with pytest.raises(SparkConnectGrpcException) as caught:
-        session.sql("SELECT 1").collect()
+    with disposed(connect(REMOTE, StaticTokenProvider("not-a-jwt"))) as session:
+        with pytest.raises(SparkConnectGrpcException) as caught:
+            session.sql("SELECT 1").collect()
     assert "UNAUTHENTICATED" in str(caught.value)
 
 
 def test_rejection_message_carries_the_correlation_id():
     """D5: a user can quote one string and have it found in every service's logs."""
-    session = connect(REMOTE, StaticTokenProvider("not-a-jwt"))
-    with correlation_id() as cid:
-        with pytest.raises(SparkConnectGrpcException) as caught:
-            session.sql("SELECT 1").collect()
+    with disposed(connect(REMOTE, StaticTokenProvider("not-a-jwt"))) as session:
+        with correlation_id() as cid:
+            with pytest.raises(SparkConnectGrpcException) as caught:
+                session.sql("SELECT 1").collect()
     assert cid in str(caught.value)
 
 
@@ -126,9 +127,9 @@ def test_downstream_audience_token_is_rejected():
     """
     from conftest import exchanged_token
 
-    session = connect(REMOTE, StaticTokenProvider(exchanged_token("alice")))
-    with pytest.raises(SparkConnectGrpcException) as caught:
-        session.sql("SELECT 1").collect()
+    with disposed(connect(REMOTE, StaticTokenProvider(exchanged_token("alice")))) as session:
+        with pytest.raises(SparkConnectGrpcException) as caught:
+            session.sql("SELECT 1").collect()
     assert "UNAUTHENTICATED" in str(caught.value)
 
 
@@ -155,9 +156,11 @@ def test_bob_cannot_claim_alices_session(alice):
 
     from pyspark.sql.connect.session import SparkSession
 
-    impostor = SparkSession.builder.channelBuilder(builder).create()
-    with pytest.raises(SparkConnectGrpcException) as caught:
-        impostor.sql("SELECT 1").collect()
+    # release=False: this session carries alice's session id, so stop() would release HER live
+    # server-side session as a side effect.
+    with disposed(SparkSession.builder.channelBuilder(builder).create(), release=False) as impostor:
+        with pytest.raises(SparkConnectGrpcException) as caught:
+            impostor.sql("SELECT 1").collect()
     assert "PERMISSION_DENIED" in str(caught.value), str(caught.value)
 
 
@@ -189,9 +192,8 @@ def test_spark_adopts_the_operation_id_the_client_supplies():
     Spark UI, and -- the part this design depends on -- in the operation job tag that reaches the
     ExecutionThread. Spark logs it as ``opId=...``, which is where this looks for it.
     """
-    session = connect(REMOTE, token_provider("alice"))
     minted = []
-    try:
+    with disposed(connect(REMOTE, token_provider("alice"))) as session:
         supplied = session.client._execute_plan_request_with_metadata
 
         def capture(operation_id=None):
@@ -201,8 +203,6 @@ def test_spark_adopts_the_operation_id_the_client_supplies():
 
         session.client._execute_plan_request_with_metadata = capture
         session.sql("SELECT count(*) FROM polaris.shared.events").collect()
-    finally:
-        session.stop()
 
     assert minted, "no ExecutePlan request was built"
     assert all(minted), f"the client left operation_id empty: {minted}"
