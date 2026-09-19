@@ -143,6 +143,7 @@ client-jvm/             the same client for the JVM, in Java (Maven)
 client-rust/            the same client in Rust, on the spark-connect-rs crate (Cargo)
 demo/                   the walkthrough: demo.py, and java/ + rust/ for the same thing again
 tests/                  the verification suite
+docs/                   screenshots the README points at
 ```
 
 ### The Java plugin
@@ -349,6 +350,11 @@ Each job-backed run carries **who asked and under which correlation ID**, in a f
 }
 ```
 
+In the UI it sits alongside OpenLineage's own facets, under **Events → (a `RUNNING` row) → run →
+facets** — the `RUNNING` events are the ones with a job start behind them:
+
+![The sparkConnectPropagation facet in the Marquez events view](docs/marquez-correlation-facet.png)
+
 So the same UUID that `make cid` greps out of Spark Connect and Polaris also identifies the run in
 Marquez. `PropagationFacetFactory` registers through OpenLineage's ServiceLoader SPI, needing no
 Spark configuration, and gets the identity from `SparkListenerJobStart`: Spark hands the
@@ -417,7 +423,7 @@ what the page tells you if you get it wrong.
 | **Polaris console** | **[http://localhost:3000](http://localhost:3000)** — localhost, never the service name ([why](#the-polaris-console)) |
 | MinIO console | http://minio:9001 |
 | Marquez (lineage UI) | [http://localhost:3001](http://localhost:3001) |
-| Marquez API | http://localhost:5000 |
+| OpenLineage API (Marquez) | http://localhost:5000/api/v1/lineage — where the Spark listener posts; admin on :5001 |
 | Spark master | http://spark-master:8082 |
 | Spark driver UI | http://spark-connect:4040 |
 | Spark Connect | sc://spark-connect:15002 |

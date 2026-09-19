@@ -179,7 +179,8 @@ head2 "Host ports"
 port_busy() { ss -ltn "sport = :$1" 2>/dev/null | tail -n +2 | grep -q . ; }
 
 for spec in "8080 keycloak" "8181 polaris" "3000 polaris-console" "9000 minio" "9001 minio-console" \
-            "15002 spark-connect" "4040 spark-ui" "7077 spark-master" "8081 spark-worker-ui"; do
+            "15002 spark-connect" "4040 spark-ui" "7077 spark-master" "8081 spark-worker-ui" \
+            "3001 marquez-web" "5000 marquez-api" "5001 marquez-admin"; do
   set -- $spec
   if port_busy "$1"; then
     todo "port $1 ($2) is already in use"
@@ -200,3 +201,7 @@ if [ "$PENDING" -gt 0 ]; then
   exit 1
 fi
 printf '  %sReady.%s Next: %smake up%s\n\n' "$GRN" "$RST" "$BOLD" "$RST"
+printf '  %sOnce it is up:%s\n' "$DIM" "$RST"
+printf '    Polaris console   http://localhost:3000   %s(localhost, not the service name)%s\n' "$DIM" "$RST"
+printf '    Marquez lineage   http://localhost:3001\n'
+printf '    OpenLineage API   http://localhost:5000/api/v1/lineage\n\n'
