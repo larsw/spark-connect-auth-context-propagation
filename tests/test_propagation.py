@@ -180,6 +180,93 @@ def test_one_correlation_id_appears_in_every_service(alice):
     assert marker in polaris_logs, "correlation ID never reached Polaris as X-Request-ID"
 
 
+@requires_docker
+def test_spark_adopts_the_operation_id_the_client_supplies():
+    """D8: the client fills in ``ExecutePlanRequest.operation_id``, which stock PySpark leaves empty.
+
+    That is what lets the interceptor file an identity under the exact operation instead of the
+    session: Spark adopts the supplied id as its own, so it appears in ``ExecuteHolder``, in the
+    Spark UI, and -- the part this design depends on -- in the operation job tag that reaches the
+    ExecutionThread. Spark logs it as ``opId=...``, which is where this looks for it.
+    """
+    session = connect(REMOTE, token_provider("alice"))
+    minted = []
+    try:
+        supplied = session.client._execute_plan_request_with_metadata
+
+        def capture(operation_id=None):
+            request = supplied(operation_id)
+            minted.append(request.operation_id)
+            return request
+
+        session.client._execute_plan_request_with_metadata = capture
+        session.sql("SELECT count(*) FROM polaris.shared.events").collect()
+    finally:
+        session.stop()
+
+    assert minted, "no ExecutePlan request was built"
+    assert all(minted), f"the client left operation_id empty: {minted}"
+    assert len(set(minted)) == len(minted), f"operation ids must be unique, got {minted}"
+
+    connect_logs = compose_logs("spark-connect")
+    for operation_id in minted:
+        assert f"opId={operation_id}" in connect_logs, (
+            f"Spark did not adopt the client's operation id {operation_id}"
+        )
+
+
+@requires_docker
+def test_concurrent_operations_in_one_session_keep_their_own_correlation_id(alice):
+    """D8, the payoff: correlation IDs stay attributed when one session runs several operations.
+
+    Two queries at once in ONE Connect session under different correlation IDs. Keyed by session
+    alone, the identity parked by one RPC is overwritten by its sibling's, and a query can reach
+    Polaris stamped with the wrong ID; keyed by operation it cannot.
+
+    Honest about what this proves: the interleaving needed to corrupt the session-keyed version is
+    narrow -- each operation refreshes the session entry immediately before its own catalog call,
+    so it usually wins the race -- and it could not be provoked here on demand. This asserts the
+    property holds, not that the previous design reliably broke it. The keying itself is pinned
+    down in ``PropagatedIdentityHolderTest.PerOperationKeying``.
+
+    Polaris puts the ``X-Request-ID`` and the request path on one access-log line, so each ID can
+    be checked against the table it was actually meant for.
+    """
+    rounds = 4
+    markers = [(str(uuid.uuid4()), str(uuid.uuid4())) for _ in range(rounds)]
+
+    def query(cid: str, sql: str) -> None:
+        with correlation_id(cid):
+            alice.sql(sql).collect()
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        for events_cid, salaries_cid in markers:
+            futures = [
+                pool.submit(query, events_cid, "SELECT * FROM polaris.shared.events"),
+                pool.submit(query, salaries_cid, "SELECT * FROM polaris.restricted.salaries"),
+            ]
+            for future in futures:
+                future.result()
+
+    polaris_logs = compose_logs("polaris").splitlines()
+
+    for events_cid, salaries_cid in markers:
+        for cid, expected, forbidden in (
+            (events_cid, "/tables/events", "/tables/salaries"),
+            (salaries_cid, "/tables/salaries", "/tables/events"),
+        ):
+            lines = [line for line in polaris_logs if cid in line]
+            assert lines, f"correlation ID {cid} never reached Polaris"
+            assert any(expected in line for line in lines), (
+                f"correlation ID {cid} never appeared on a {expected} request"
+            )
+            leaked = [line for line in lines if forbidden in line]
+            assert not leaked, (
+                f"correlation ID {cid} was stamped on a {forbidden} request -- a sibling "
+                f"operation's identity overwrote it:\n" + "\n".join(leaked[:3])
+            )
+
+
 # ------------------------------------------------------- vended credentials --
 
 def test_polaris_vends_distinct_temporary_credentials_per_user(alice, bob):

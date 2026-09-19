@@ -97,18 +97,40 @@ Per-session isolation is real: `SparkConnectSessionManager.newIsolatedSession()`
 `SparkSession.newSession()`, giving each Connect session its own `CatalogManager` and therefore
 its own catalog and auth manager instances.
 
-## 5. `operation_id` is never populated by PySpark
+## 5. `operation_id` is never populated by PySpark — and one statement is not one operation
 
 All nine call sites in `core.py` invoke `self._execute_plan_request_with_metadata()` with no
-argument, and `operation_id` is a parameter of that private method. The server generates the id.
+argument, and `operation_id` is a parameter of that private method. The server generates the id,
+so the client never learns it and an interceptor can key what it learns only by session. For a
+token that is fine, since a token is per user. For a correlation ID it means two operations
+running concurrently *in the same session* under different IDs can observe each other's.
 
-An interceptor therefore cannot key anything per operation — only per session. For a token that
-is fine, since a token is per user. For a correlation ID it means two queries running
-concurrently *in the same session* under different IDs can observe each other's.
+**Now fixed here.** `connect()` patches `_execute_plan_request_with_metadata` on the client
+*instance* — not the class, so nothing else in the process is affected — to mint a UUID4 per
+request. Spark adopts it, which puts it in `ExecuteHolder`, in the Spark UI and, load-bearing for
+this design, in the operation job tag that reaches the ExecutionThread. The interceptor then files
+the identity under `(userId, sessionId, operationId)` and falls back to the session entry for a
+client that sends no id. Verified: with the patch off, the captured ids come back `['', '']`; with
+it on, each one appears in Spark's own logs as `opId=<uuid>`.
 
-A client could set `operation_id` to the correlation ID by patching that private method (the
-client validates it as a UUID4), which would make Spark carry the correlation ID as its own
-operation id — visible in the job tag, in `ExecuteHolder` and in the Spark UI. Left undone here.
+**The obvious shortcut does not work.** Setting `operation_id` *to the correlation ID*, which this
+document previously suggested, fails immediately — one correlation ID is deliberately not one
+operation:
+
+* `spark.sql(x).collect()` issues **two** ExecutePlan requests (the command, then the result
+  relation), and a `with correlation_id()` block is meant to span several statements.
+* Spark keys `ExecuteHolder` by `(userId, sessionId, operationId)` and rejects a repeat with
+  `INVALID_HANDLE.OPERATION_ALREADY_EXISTS`, or `OPERATION_ABANDONED` once the first has been
+  reaped. Reusing one id failed on the very first statement, not on the second.
+
+So the operation id is fresh per request and the correlation ID keeps its own header; the server
+logs the pair, which is what makes one greppable from the other.
+
+**How much this was really costing** is worth stating honestly: the cross-talk could not be
+provoked on demand. Operations in one session do overlap — three sleeping queries showed two
+running together — but each operation refreshes the session entry immediately before its own
+catalog call, so it nearly always wins the race. Per-operation keying removes the dependence on
+that timing rather than fixing an outage anyone had seen.
 
 ## 6. `UserContext.extensions` is usable, but leaks secrets into the Spark UI
 
@@ -191,15 +213,3 @@ and the decoded session policy is narrowed to a single table's prefix:
 
 Since no Spark container holds any S3 credential at all, a successful read from the worker JVM
 can only have used credentials vended for the authenticated user.
-
-## 12. Smaller things that cost time
-
-| Symptom | Cause |
-|---|---|
-| Healthcheck fails with `cannot create /dev/tcp/...` | `CMD-SHELL` runs `/bin/sh`; the Spark image's is dash, which has no `/dev/tcp`. Use `["CMD","bash","-c",...]` |
-| Spark master healthcheck refused on `localhost:7077` | The master binds to whatever `--host` resolves to, not loopback |
-| Master advertises the driver's hostname for its own UI | `spark.driver.host` in a shared `spark-defaults.conf` applies to master and worker too |
-| Tables vanish but Polaris still lists them | MinIO container recreated without a named volume |
-| A query produces no Polaris request at all | Iceberg caches loaded tables; disable `cache-enabled` if propagation must be observable |
-| One JWKS failure after restarting Keycloak | Recreating Keycloak rotates its signing keys; validators recover on refresh |
-| `docker compose config` shows `$$1` and you cannot tell if it is right | It re-escapes on output. Only running a container shows the real value (`PRINCIPAL_ROLE:$1`) |

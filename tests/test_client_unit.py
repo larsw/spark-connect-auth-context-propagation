@@ -27,6 +27,11 @@ from spark_connect_propagation.channel import (
     subject_of,
 )
 from spark_connect_propagation.context import current_correlation_id
+from spark_connect_propagation.operation import (
+    SEAM,
+    install_operation_ids,
+    new_operation_id,
+)
 
 
 def jwt_with(claims: dict) -> str:
@@ -192,6 +197,74 @@ def test_subject_is_read_from_the_token():
 @pytest.mark.parametrize("value", ["", "garbage", "a.b", "a.!!!.c"])
 def test_subject_extraction_never_raises(value):
     assert subject_of(value) is None
+
+
+# ----------------------------------------------------------- operation ids --
+
+class FakeConnectClient:
+    """Stands in for SparkConnectClient: records what operation_id each request was built with."""
+
+    def __init__(self):
+        self.built = []
+
+    def _execute_plan_request_with_metadata(self, operation_id=None):
+        self.built.append(operation_id)
+        return f"request({operation_id})"
+
+
+def test_operation_ids_are_uuid4():
+    """PySpark validates the value with uuid.UUID(operation_id, version=4) before sending it."""
+    value = new_operation_id()
+
+    assert uuid.UUID(value).version == 4
+
+
+def test_every_request_gets_its_own_operation_id():
+    """The whole point: one correlation ID spans several operations, so ids cannot be shared.
+
+    `spark.sql(x).collect()` alone issues two ExecutePlan requests, and Spark rejects a repeated
+    operation id with INVALID_HANDLE.OPERATION_ALREADY_EXISTS.
+    """
+    client = FakeConnectClient()
+
+    assert install_operation_ids(client) is True
+    for _ in range(4):
+        client._execute_plan_request_with_metadata()
+
+    assert all(client.built), "every request must carry an operation id"
+    assert len(set(client.built)) == 4, f"ids must be unique, got {client.built}"
+
+
+def test_an_explicit_operation_id_is_left_alone():
+    """PySpark passes one itself in a few places; ours must not overwrite it."""
+    client = FakeConnectClient()
+    install_operation_ids(client)
+
+    client._execute_plan_request_with_metadata("caller-supplied")
+
+    assert client.built == ["caller-supplied"]
+
+
+def test_patching_is_per_instance():
+    """Only sessions this package opens are affected; the class stays untouched."""
+    patched, untouched = FakeConnectClient(), FakeConnectClient()
+    install_operation_ids(patched)
+
+    patched._execute_plan_request_with_metadata()
+    untouched._execute_plan_request_with_metadata()
+
+    assert patched.built[0] is not None
+    assert untouched.built == [None]
+    assert SEAM not in FakeConnectClient.__dict__ or callable(getattr(FakeConnectClient, SEAM))
+
+
+def test_a_missing_seam_is_survivable():
+    """A PySpark that renamed the private method costs per-operation keying, not the session."""
+
+    class WithoutTheSeam:
+        pass
+
+    assert install_operation_ids(WithoutTheSeam()) is False
 
 
 # ------------------------------------------------------------ token refresh --
