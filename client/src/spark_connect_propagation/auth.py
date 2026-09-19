@@ -126,8 +126,10 @@ class PasswordGrantTokenProvider:
                     )
                 )
                 return self._tokens.access_token
-            except OAuthError:
-                pass  # refresh token expired; fall through to a full grant
+            except (OAuthError, OSError):
+                # Refresh token spent, or the network blinked. Either way a full grant is the
+                # honest next move; if the IdP is really down, that fails loudly on its own.
+                pass
         self._tokens = _Tokens.from_response(
             _post_form(
                 self.endpoints.token,
@@ -190,7 +192,11 @@ class DeviceCodeTokenProvider:
                     },
                 )
             )
-        except OAuthError:
+        except (OAuthError, OSError):
+            # Either the refresh token is spent -- Keycloak runs in dev mode here, so a restart
+            # wipes every SSO session while the cache on disk still looks perfectly usable -- or
+            # the network blinked. Both mean "go back to a device login", not "print a stack
+            # trace". URLError, socket timeouts and ConnectionResetError are all OSError.
             return None
 
     def _device_flow(self) -> _Tokens:

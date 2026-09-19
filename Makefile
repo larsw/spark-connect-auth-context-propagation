@@ -5,6 +5,15 @@
 
 SHELL := /bin/bash
 COMPOSE := docker compose
+
+# Spark's own channel-level pre-shared key, unrelated to the per-user JWT. compose.yaml
+# defaults the server to this same value, and the client must present it or Spark answers
+# every RPC with UNAUTHENTICATED "No authentication token provided" before our interceptor
+# ever sees the user token. The compose `client` service gets it from compose.yaml; the
+# host-run targets below get it from here. Exported, so overriding it on the command line
+# -- make up demo CONNECT_SHARED_SECRET=hunter2 -- reaches the server and the client alike.
+export CONNECT_SHARED_SECRET ?= poc-shared-secret
+
 JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
 

@@ -5,7 +5,7 @@ Spark Connect (PySpark client → Java server extensions), have the server excha
 for a downstream credential, and prove it reaches an Apache Polaris catalog and MinIO
 object storage with per-user authorisation.
 
-**Status:** design locked 2026-09-18. **Complete.** All milestones done, all four open risks resolved. 11 end-to-end checks pass against the live stack, plus 27 unit tests (10 Java, 17 Python) that need nothing running.
+**Status:** design locked 2026-09-18. **Complete.** All milestones done, all four open risks resolved. 11 end-to-end checks pass against the live stack, plus 31 unit tests (10 Java, 21 Python) that need nothing running.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
@@ -254,7 +254,7 @@ the relocated gRPC classes and the unrelocated `org.apache.spark.connect.proto.*
 no build-time shading gymnastics were needed on our side.
 
 ### 2.17 End-to-end result (verified 2026-09-18)
-`11 passed` in `tests/test_propagation.py`, run from the compose `client` service. A further 17
+`11 passed` in `tests/test_propagation.py`, run from the compose `client` service. A further 21
 client unit tests and 10 Java unit tests run with no stack at all:
 
 | Claim | Evidence |

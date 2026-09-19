@@ -13,6 +13,13 @@ import uuid
 import pytest
 
 from spark_connect_propagation import active_correlation_id, correlation_id, new_correlation_id
+from spark_connect_propagation import auth
+from spark_connect_propagation.auth import (
+    DeviceCodeTokenProvider,
+    Endpoints,
+    OAuthError,
+    PasswordGrantTokenProvider,
+)
 from spark_connect_propagation.channel import (
     DEFAULT_CORRELATION_HEADER,
     DEFAULT_TOKEN_HEADER,
@@ -185,3 +192,53 @@ def test_subject_is_read_from_the_token():
 @pytest.mark.parametrize("value", ["", "garbage", "a.b", "a.!!!.c"])
 def test_subject_extraction_never_raises(value):
     assert subject_of(value) is None
+
+
+# ------------------------------------------------------------ token refresh --
+
+ISSUER = "http://keycloak:8080/realms/spark"
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [ConnectionResetError(104, "Connection reset by peer"), OAuthError("invalid_grant", "", 400)],
+)
+def test_device_flow_refresh_gives_up_quietly(monkeypatch, failure):
+    """A failed refresh must fall back to a device login, not abort with a stack trace.
+
+    Keycloak runs in dev mode here, so restarting the stack wipes every SSO session while the
+    token cache on disk still looks perfectly usable. The refresh then fails -- as a clean
+    invalid_grant once Keycloak is up, or as a reset connection while it is still coming up.
+    """
+    provider = DeviceCodeTokenProvider(endpoints=Endpoints(ISSUER), client_id="spark-cli")
+
+    def fail(url, form, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(auth, "_post_form", fail)
+
+    assert provider._try_refresh("rt-stale") is None
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [ConnectionResetError(104, "Connection reset by peer"), OAuthError("invalid_grant", "", 400)],
+)
+def test_password_grant_falls_back_to_a_full_grant(monkeypatch, failure):
+    """The suite's own provider: a failed refresh re-authenticates rather than raising."""
+    provider = PasswordGrantTokenProvider(
+        endpoints=Endpoints(ISSUER), client_id="spark-cli", username="alice", password="alice"
+    )
+    provider._tokens = auth._Tokens("stale", "rt-stale", expires_at=0.0)
+    grants = []
+
+    def fake_post(url, form, **kwargs):
+        grants.append(form["grant_type"])
+        if form["grant_type"] == "refresh_token":
+            raise failure
+        return {"access_token": "fresh", "refresh_token": "rt-new", "expires_in": 300}
+
+    monkeypatch.setattr(auth, "_post_form", fake_post)
+
+    assert provider.token() == "fresh"
+    assert grants == ["refresh_token", "password"]

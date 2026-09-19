@@ -8,7 +8,7 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-**Status:** complete and verified. 11 end-to-end checks against the live stack, plus 27 unit tests.
+**Status:** complete and verified. 11 end-to-end checks against the live stack, plus 31 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and
 [TODO.md](TODO.md) for the full decision record.
 
@@ -37,7 +37,7 @@ make test        # full suite on the host
 
 `make test-unit` runs the client unit tests with no stack, no docker and no network.
 `make test-container` runs the full suite inside the compose network, needing no host setup at
-all. Between them: 17 unit tests, 11 end-to-end, and 10 Java tests via `make jar`.
+all. Between them: 21 unit tests, 11 end-to-end, and 10 Java tests via `make jar`.
 
 `install.sh` never runs a privileged command on its own. It prints exactly what it wants to do
 and waits for a `y`. `--check` reports without changing anything, `--print-only` shows the
@@ -46,6 +46,12 @@ commands for you to run yourself.
 Everything uses the compose service names as hostnames — the browser, the client and the
 containers alike — because Keycloak stamps a single issuer into every token and OIDC validation
 fails if they disagree. That is the only reason `/etc/hosts` is involved.
+
+Spark Connect also checks a channel-level pre-shared key of its own, which has nothing to do with
+the user's token. The `Makefile` exports `CONNECT_SHARED_SECRET` (default `poc-shared-secret`) so
+the host-run targets and the server agree on it; driving the client by hand needs the same value
+in the environment, or Spark answers every RPC with `UNAUTHENTICATED: No authentication token
+provided` before it ever looks at the user token.
 
 ## The path a query takes
 
