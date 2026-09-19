@@ -8,7 +8,7 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-**Status:** complete and verified. `11 passed` end to end.
+**Status:** complete and verified. 11 end-to-end checks against the live stack, plus 27 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and
 [TODO.md](TODO.md) for the full decision record.
 
@@ -85,7 +85,7 @@ parses to recover the session and look up the credential.
 
 ```
 install.sh              toolchain and /etc/hosts preflight; prompts before sudo
-Makefile                install / build / up / bootstrap / demo / test / cid / down
+Makefile                install / build / up / bootstrap / demo / test-unit / test / cid / down
 compose.yaml            keycloak, minio (+audit sink), polaris, spark master/worker/connect
 docker/keycloak/        realm: alice, bob, three clients, audience and claim mappers
 docker/polaris/         idempotent bootstrap: catalog, namespaces, principals, grants
