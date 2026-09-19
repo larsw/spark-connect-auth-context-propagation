@@ -5,7 +5,7 @@ Spark Connect (PySpark client → Java server extensions), have the server excha
 for a downstream credential, and prove it reaches an Apache Polaris catalog and MinIO
 object storage with per-user authorisation.
 
-**Status:** design locked 2026-09-18. **Complete.** All milestones done, all four open risks resolved. 17 end-to-end checks pass against the live stack, plus 41 unit tests (15 Java, 26 Python) that need nothing running.
+**Status:** design locked 2026-09-18. **Complete.** All milestones done, all four open risks resolved. 19 end-to-end checks pass against the live stack, plus 41 unit tests (15 Java, 26 Python) that need nothing running.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 

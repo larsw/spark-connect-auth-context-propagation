@@ -23,8 +23,17 @@ import pytest
 
 ISSUER = os.environ.get("KEYCLOAK_ISSUER", "http://keycloak:8080/realms/spark")
 POLARIS = os.environ.get("POLARIS_URL", "http://polaris:8181")
-REDIRECT_URI = "http://polaris-console:3000/auth/callback"
+CONSOLE = os.environ.get("POLARIS_CONSOLE_URL", "http://polaris-console:3000")
+
+#: Deliberately localhost rather than the service name, and the one place in this stack where
+#: that matters. See ``test_the_console_is_configured_for_a_secure_context``.
+CONSOLE_ORIGIN = "http://localhost:3000"
+REDIRECT_URI = f"{CONSOLE_ORIGIN}/auth/callback"
 CLIENT_ID = "polaris-console"
+
+#: Origins a browser treats as "potentially trustworthy" over plain HTTP. Anything else has to be
+#: HTTPS, or ``window.crypto.subtle`` is undefined. See the W3C Secure Contexts spec.
+SECURE_HTTP_HOSTS = ("localhost", "127.0.0.1", "[::1]")
 
 
 def _b64(raw: bytes) -> str:
@@ -145,15 +154,45 @@ def test_console_shows_each_user_their_own_catalog(alice_console_token, bob_cons
     )
 
 
-def test_polaris_allows_the_console_origin():
-    """Without CORS the console cannot call Polaris at all, and the failure is opaque."""
+@pytest.mark.parametrize("origin", [CONSOLE_ORIGIN, "http://polaris-console:3000"])
+def test_polaris_allows_the_console_origin(origin):
+    """Without CORS the console cannot call Polaris at all, and the failure is opaque.
+
+    Both origins are checked because the console is reachable on either, and which one the browser
+    sends is whichever address the user typed.
+    """
     request = urllib.request.Request(
         f"{POLARIS}/api/management/v1/catalogs", method="OPTIONS"
     )
-    request.add_header("Origin", "http://polaris-console:3000")
+    request.add_header("Origin", origin)
     request.add_header("Access-Control-Request-Method", "GET")
     request.add_header("Access-Control-Request-Headers", "authorization")
     with urllib.request.urlopen(request, timeout=30) as response:
         allowed = response.headers.get("access-control-allow-origin")
 
-    assert allowed == "http://polaris-console:3000", f"CORS not open to the console: {allowed!r}"
+    assert allowed == origin, f"CORS not open to the console at {origin}: {allowed!r}"
+
+
+def test_the_console_is_configured_for_a_secure_context():
+    """The sign-in button needs ``crypto.subtle``, which a plain-HTTP service name does not get.
+
+    PKCE S256 hashes the verifier with ``crypto.subtle.digest``, and browsers expose
+    ``window.crypto.subtle`` only in a secure context: HTTPS, or plain HTTP on localhost /
+    127.0.0.1 / ::1. The test is on the literal hostname, so an /etc/hosts alias pointing at
+    loopback does not count -- served from ``http://polaris-console:3000`` the console dies with
+    "Cannot read properties of undefined (reading 'digest')" the moment you click sign in.
+
+    Nothing else catches this: the flow above does its own PKCE in Python with hashlib, so it
+    passes no matter which origin the console is configured for. Only a browser cares.
+    """
+    with urllib.request.urlopen(f"{CONSOLE}/config.js", timeout=30) as response:
+        config = response.read().decode()
+
+    match = re.search(r"VITE_OIDC_REDIRECT_URI:\s*'([^']*)'", config)
+    assert match, f"no VITE_OIDC_REDIRECT_URI in the console's config.js:\n{config}"
+
+    configured = urllib.parse.urlparse(match.group(1))
+    assert configured.scheme == "https" or configured.hostname in SECURE_HTTP_HOSTS, (
+        f"the console's redirect URI {match.group(1)!r} is not a secure context, so "
+        f"window.crypto.subtle will be undefined and PKCE sign-in cannot work"
+    )

@@ -8,7 +8,7 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-**Status:** complete and verified. 17 end-to-end checks against the live stack, plus 41 unit tests.
+**Status:** complete and verified. 19 end-to-end checks against the live stack, plus 41 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and
 [TODO.md](TODO.md) for the full decision record.
 
@@ -38,7 +38,7 @@ make test        # full suite on the host
 
 `make test-unit` runs the client unit tests with no stack, no docker and no network.
 `make test-container` runs the full suite inside the compose network, needing no host setup at
-all. Between them: 26 unit tests, 17 end-to-end, and 15 Java tests via `make jar`.
+all. Between them: 26 unit tests, 19 end-to-end, and 15 Java tests via `make jar`.
 
 `install.sh` never runs a privileged command on its own. It prints exactly what it wants to do
 and waits for a `y`. `--check` reports without changing anything, `--print-only` shows the
@@ -46,7 +46,8 @@ commands for you to run yourself.
 
 Everything uses the compose service names as hostnames — the browser, the client and the
 containers alike — because Keycloak stamps a single issuer into every token and OIDC validation
-fails if they disagree. That is the only reason `/etc/hosts` is involved.
+fails if they disagree. That is the only reason `/etc/hosts` is involved. The one exception is the
+Polaris console, which you open at `http://localhost:3000`; see [below](#the-polaris-console).
 
 Spark Connect also checks a channel-level pre-shared key of its own, which has nothing to do with
 the user's token. The `Makefile` exports `CONNECT_SHARED_SECRET` (default `poc-shared-secret`) so
@@ -153,7 +154,15 @@ The stack includes the Apache Polaris web console, which lives in
 a pinned upstream commit rather than vendoring a copy, so there is nothing of theirs to keep in
 sync here.
 
-Open http://polaris-console:3000 and sign in as **alice** or **bob**. It uses authorization code
+Open **http://localhost:3000** and sign in as **alice** or **bob**. Note the hostname: this is the
+one part of the stack you must *not* reach by its service name. The console signs in with PKCE
+S256, which needs `crypto.subtle.digest`, and browsers expose `window.crypto.subtle` only in a
+secure context — HTTPS, or plain HTTP on `localhost`/`127.0.0.1`. That check looks at the literal
+hostname, so `http://polaris-console:3000` does not qualify even though the alias points at
+loopback, and the sign-in button fails with `Cannot read properties of undefined (reading
+'digest')`. The console's own origin is not an issuer, so nothing else cares which one you use.
+
+It uses authorization code
 with PKCE against the same Keycloak realm Spark uses, so the token it receives carries the same
 `principal_name` and `principal_roles` claims — which means the console is not an admin view. It
 renders whichever catalog the logged-in user is actually entitled to:
@@ -193,7 +202,7 @@ line up by eye.
 |---|---|
 | Keycloak | http://keycloak:8080 |
 | Polaris | http://polaris:8181 |
-| Polaris console | http://polaris-console:3000 |
+| Polaris console | http://localhost:3000 (must be localhost, not the service name — see above) |
 | MinIO console | http://minio:9001 |
 | Spark master | http://spark-master:8082 |
 | Spark driver UI | http://spark-connect:4040 |

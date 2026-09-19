@@ -188,7 +188,15 @@ services:
       # Preferred path: log in as a real user against the same realm Spark uses.
       VITE_OIDC_ISSUER_URL: "http://keycloak:8080/realms/spark"
       VITE_OIDC_CLIENT_ID: "polaris-console"
-      VITE_OIDC_REDIRECT_URI: "http://polaris-console:3000/auth/callback"
+      # localhost, and NOT http://polaris-console:3000 like everything else here. PKCE S256 needs
+      # crypto.subtle.digest, and browsers expose window.crypto.subtle only in a secure context:
+      # HTTPS, or plain HTTP on localhost / 127.0.0.1 / ::1. That test is on the literal hostname,
+      # so an /etc/hosts alias pointing at loopback does not qualify -- on the service name
+      # crypto.subtle is undefined and the sign-in button dies with "Cannot read properties of
+      # undefined (reading 'digest')". The console's own origin is not an issuer, so using
+      # localhost here costs none of the hostname consistency the rest of the stack needs.
+      # Keycloak's polaris-console client registers both origins, so only this value decides.
+      VITE_OIDC_REDIRECT_URI: "http://localhost:3000/auth/callback"
       VITE_OIDC_SCOPE: "openid profile email"
     healthcheck:
       # 127.0.0.1, not localhost: busybox wget resolves localhost to ::1 first and nginx here
