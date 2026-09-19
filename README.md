@@ -65,7 +65,7 @@ provided` before it ever looks at the user token.
 ```mermaid
 sequenceDiagram
     participant U as alice (browser)
-    participant C as PySpark client
+    participant C as Client (PySpark / JVM / Rust)
     participant S as Spark Connect server
     participant K as Keycloak
     participant P as Polaris
@@ -74,6 +74,7 @@ sequenceDiagram
 
     U->>K: device flow login
     K-->>C: access token (aud=spark-connect)
+    Note over C: three clients, one unchanged server<br/>each pins user_id to the JWT sub<br/>and supplies its own operation_id
     C->>S: ExecutePlan + x-user-token + x-correlation-id
     Note over S: validate JWT (cached JWKS)<br/>user_id == sub? session owned by sub?
     S->>K: RFC 8693 exchange (audience=polaris)
@@ -93,7 +94,23 @@ unpooled thread, so nothing the gRPC interceptor puts in a `ThreadLocal` survive
 that talks to Polaris. The bridge is the job tag Spark applies to that thread —
 `SparkConnect_OperationTag_User_..._Session_..._Operation_...` — which the Iceberg `AuthManager`
 parses to recover the Connect coordinates and look up the credential. The `Operation_` segment is
-usable only because the client fills in `operation_id`, which PySpark leaves to the server.
+usable only because the client fills in `operation_id`, which Spark otherwise generates for itself
+and never tells the client about.
+
+Only the left-hand end of that picture changes between the three clients. The server is the same
+binary, the same config and the same headers whichever one is talking to it:
+
+| | Python | JVM | Rust |
+|---|---|---|---|
+| Headers on every RPC | gRPC interceptor | gRPC interceptor | fixed when the session opens |
+| `user_id` = JWT `sub` | yes | yes | yes |
+| `operation_id` | patched private method | interceptor rewrites the message | the crate already does it |
+| Correlation scope | `with correlation_id()` | `CorrelationId.scope()` | one per session |
+| Walkthrough | `make demo` | `make demo-jvm` | `make demo-rust` |
+
+The last two rows are the same constraint seen twice: `spark-connect-rs` fixes a session's headers
+when the session is built, so Rust scopes by session where the other two scope by block. Why each
+column looks the way it does is in [FINDINGS.md](FINDINGS.md) §5, §12 and §13.
 
 ## Layout
 
