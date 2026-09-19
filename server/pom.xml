@@ -17,6 +17,8 @@
     <scala.binary.version>2.13</scala.binary.version>
     <iceberg.version>1.11.0</iceberg.version>
     <nimbus.version>10.10</nimbus.version>
+    <!-- Keep in step with OPENLINEAGE_VERSION in docker/spark/Dockerfile. -->
+    <openlineage.version>1.53.0</openlineage.version>
   </properties>
 
   <dependencies>
@@ -62,6 +64,18 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
       <version>2.0.17</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!--
+      For the OpenLineage facet that stamps our correlation ID onto lineage events. `provided`
+      because the same jar is already in $SPARK_HOME/jars for the listener itself; shipping a
+      second copy inside ours would give the SPI two different CustomFacetBuilder classes.
+    -->
+    <dependency>
+      <groupId>io.openlineage</groupId>
+      <artifactId>openlineage-spark_${scala.binary.version}</artifactId>
+      <version>${openlineage.version}</version>
       <scope>provided</scope>
     </dependency>
 

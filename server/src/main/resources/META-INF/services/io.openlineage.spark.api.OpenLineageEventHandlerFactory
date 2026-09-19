@@ -1,0 +1,3 @@
+# OpenLineage discovers facet builders through this ServiceLoader file, so registering ours needs
+# no Spark configuration at all. See PropagationFacetFactory.
+io.sparkconnect.propagation.PropagationFacetFactory

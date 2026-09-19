@@ -337,10 +337,30 @@ spark_connect_server_propagation_po_c.drop_table
 ...
 ```
 
-**Every one of them has empty `inputs` and `outputs`, and that is the interesting part.** To name a
-dataset, OpenLineage loads the table from the catalog — on the listener bus thread. That thread
-carries no Connect job tag, so the `PropagatingRestAuthManager` has no identity for it and sends
-the call unauthenticated, Polaris answers 401, and the dataset goes unresolved:
+Each job-backed run carries **who asked and under which correlation ID**, in a facet of our own:
+
+```json
+"sparkConnectPropagation": {
+  "correlationId": "22b19898-e641-4a08-8cb6-a8a9612e80c4",
+  "principal": "alice",
+  "subject": "9682af88-2cba-4543-9e4a-c2a37cbe78af",
+  "sessionId": "56106cb6-a00e-4d11-9ef5-d38d81bd6468",
+  "operationId": "aac54395-95f3-455d-845a-fa8d3c7ee36d"
+}
+```
+
+So the same UUID that `make cid` greps out of Spark Connect and Polaris also identifies the run in
+Marquez. `PropagationFacetFactory` registers through OpenLineage's ServiceLoader SPI, needing no
+Spark configuration, and gets the identity from `SparkListenerJobStart`: Spark hands the
+submitting thread's `spark.job.tags` over inside the event, so the tag that does not survive as a
+ThreadLocal does survive here. Runs with no job start behind them — a DDL the catalog satisfies
+without scheduling anything — get no facet. No token is ever put in an event.
+
+**Every one of them still has empty `inputs` and `outputs`, and that is the interesting part.** To
+name a dataset, OpenLineage loads the table from the catalog — on the listener bus thread. Carrying
+the identity there was enough for a facet, because a name is just data; it is not enough for a
+catalog call, which needs a live credential. So the AuthManager has nothing to present, sends the
+call unauthenticated, Polaris answers 401, and the dataset goes unresolved:
 
 ```
 WARN [,] PropagatingRestAuthManager: no propagated identity for this thread;

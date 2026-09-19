@@ -337,9 +337,37 @@ tag, and the listener thread has no job tag, so our AuthManager has no identity 
 unauthenticated, exactly as designed. Polaris answers 401 and the dataset goes unresolved. 38
 times per test run.
 
-The conflict is structural, not incidental. A catalog that authorises per user can only be read by
-something that *is* a user; a lineage collector that runs beside the query, on its own thread,
-deliberately is not one. Three ways out, none free:
+**The identity itself, though, does cross — through the event rather than the thread.**
+`SparkListenerJobStart` carries the submitting thread's local properties with it, and
+`spark.job.tags` is one of them. So the tag that does not survive as a ThreadLocal *does* survive
+inside the event, which is enough to recover the Connect coordinates and look the identity up.
+`PropagationFacetFactory` does exactly that, and every job-backed run in Marquez now carries:
+
+```json
+"sparkConnectPropagation": {
+  "correlationId": "22b19898-e641-4a08-8cb6-a8a9612e80c4",
+  "principal": "alice",
+  "subject": "9682af88-2cba-4543-9e4a-c2a37cbe78af",
+  "sessionId": "56106cb6-a00e-4d11-9ef5-d38d81bd6468",
+  "operationId": "aac54395-95f3-455d-845a-fa8d3c7ee36d"
+}
+```
+
+Which is worth noticing: the *identity* crosses to the listener thread perfectly well, because
+Spark hands it over in the event. It is the *catalog call* that cannot, because that needs a live
+credential rather than a name. Only runs backed by a job start get the facet — a DDL statement the
+catalog satisfies without scheduling anything has no job start behind it, and so no correlation ID.
+
+**One trap in the SPI.** OpenLineage dispatches custom facet builders on the builder's type
+parameter, so `CustomFacetBuilder<SparkListenerJobStart, RunFacet>` should be exactly right. It is
+never called — no error, no warning, just silence. Declaring `CustomFacetBuilder<Object, RunFacet>`
+and testing the type by hand receives precisely the events the generic was supposed to select:
+across one `make test`, 8 `SparkListenerJobStart`, 16 `SparkListenerSQLExecutionEnd`, 13
+`SparkListenerSQLExecutionStart` and a scattering of RDDs.
+
+The dataset conflict is structural, not incidental. A catalog that authorises per user can only be
+read by something that *is* a user; a lineage collector that runs beside the query, on its own
+thread, deliberately is not one. Three ways out, none free:
 
 * Give the collector a service identity for catalog reads. Cheapest, and it puts an ambient
   credential back into Spark — the one thing this PoC exists to show you do not need.
