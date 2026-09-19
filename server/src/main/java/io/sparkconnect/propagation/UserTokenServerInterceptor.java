@@ -216,16 +216,25 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
         return;
       }
 
-      PropagatedIdentityHolder.put(coordinates.userId(), coordinates.sessionId(), identity);
+      PropagatedIdentityHolder.put(
+          coordinates.userId(), coordinates.sessionId(), coordinates.operationId(), identity);
 
       org.slf4j.MDC.put(MDC_CORRELATION_ID, correlationId);
       if (identity.principalName() != null) {
         org.slf4j.MDC.put(MDC_PRINCIPAL, identity.principalName());
       }
       try {
+        // Logging the operation id beside the correlation ID is what lets one be grepped from the
+        // other: Spark stamps the operation id into the job tag and the Spark UI, the correlation
+        // ID goes on to Polaris as X-Request-ID, and this line ties them together.
         LOG.debug(
-            "{} authenticated as {} (session {})",
-            method, identity.principalName(), coordinates.sessionId());
+            "{} authenticated as {} (session {}, operation {})",
+            method,
+            identity.principalName(),
+            coordinates.sessionId(),
+            coordinates.operationId() == null || coordinates.operationId().isBlank()
+                ? "<server-generated>"
+                : coordinates.operationId());
         super.onMessage(message);
       } finally {
         org.slf4j.MDC.remove(MDC_CORRELATION_ID);
@@ -255,10 +264,20 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
   /**
    * Each Connect request is a distinct generated class with no shared interface, so the session and
    * user ids have to be pulled out per message type.
+   *
+   * <p>Only ExecutePlan and ReattachExecute carry an operation id, and ExecutePlan only carries one
+   * if the client chose to send it -- stock PySpark does not, which is why the operation id is
+   * optional here rather than assumed.
    */
   private static ConnectCoordinates coordinatesOf(Object message) {
     if (message instanceof ExecutePlanRequest r) {
-      return new ConnectCoordinates(r.getUserContext().getUserId(), r.getSessionId());
+      return new ConnectCoordinates(
+          r.getUserContext().getUserId(),
+          r.getSessionId(),
+          r.hasOperationId() ? r.getOperationId() : null);
+    } else if (message instanceof ReattachExecuteRequest r) {
+      return new ConnectCoordinates(
+          r.getUserContext().getUserId(), r.getSessionId(), r.getOperationId());
     } else if (message instanceof AnalyzePlanRequest r) {
       return new ConnectCoordinates(r.getUserContext().getUserId(), r.getSessionId());
     } else if (message instanceof ConfigRequest r) {
@@ -268,8 +287,6 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
     } else if (message instanceof ArtifactStatusesRequest r) {
       return new ConnectCoordinates(r.getUserContext().getUserId(), r.getSessionId());
     } else if (message instanceof InterruptRequest r) {
-      return new ConnectCoordinates(r.getUserContext().getUserId(), r.getSessionId());
-    } else if (message instanceof ReattachExecuteRequest r) {
       return new ConnectCoordinates(r.getUserContext().getUserId(), r.getSessionId());
     } else if (message instanceof ReleaseExecuteRequest r) {
       return new ConnectCoordinates(r.getUserContext().getUserId(), r.getSessionId());
@@ -281,5 +298,9 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
     return null;
   }
 
-  private record ConnectCoordinates(String userId, String sessionId) {}
+  private record ConnectCoordinates(String userId, String sessionId, String operationId) {
+    ConnectCoordinates(String userId, String sessionId) {
+      this(userId, sessionId, null);
+    }
+  }
 }

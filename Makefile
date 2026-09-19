@@ -12,6 +12,7 @@ SHELL := /bin/bash
 CONNECT_SHARED_SECRET ?= poc-shared-secret
 export CONNECT_SHARED_SECRET
 COMPOSE := docker compose
+
 JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
 

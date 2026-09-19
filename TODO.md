@@ -5,7 +5,7 @@ Spark Connect (PySpark client → Java server extensions), have the server excha
 for a downstream credential, and prove it reaches an Apache Polaris catalog and MinIO
 object storage with per-user authorisation.
 
-**Status:** design locked 2026-09-18. **Complete.** All milestones done, all four open risks resolved. 15 end-to-end checks pass against the live stack, plus 27 unit tests (10 Java, 17 Python) that need nothing running.
+**Status:** design locked 2026-09-18. **Complete.** All milestones done, all four open risks resolved. 17 end-to-end checks pass against the live stack, plus 41 unit tests (15 Java, 26 Python) that need nothing running.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
@@ -22,7 +22,7 @@ without reading §2 first — several were forced by verified upstream facts.
 | 2 | Server performs a **token exchange**, not pass-through | PoC must prove the server acts on behalf of the user |
 | 3 | Exchange = **RFC 8693 standard token exchange at Keycloak** | Server never holds user secrets; outbound token provably ≠ inbound |
 | 4 | Wire = **custom ChannelBuilder + client interceptor**, per-RPC headers | Dynamic/refreshable; no PySpark fork; avoids leaking token into Spark UI (§2.8) |
-| 5 | Thread bridge = **job-tag lookup, keyed by session** | Only mechanism that survives the gRPC-thread → ExecutionThread boundary without forking Spark (§2.5). Per-*operation* keying is not reachable — see §2.15 |
+| 5 | Thread bridge = **job-tag lookup, keyed by operation then session** | Only mechanism that survives the gRPC-thread → ExecutionThread boundary without forking Spark (§2.5). Per-*operation* keying added 2026-09-19, once the client began supplying `operation_id` — see §2.15 |
 | 6 | Correlation ID = **client-minted opaque UUID** → `X-Request-ID` → Polaris | Polaris already ingests this header into its MDC and audit events (§2.7) |
 | 7 | Demo = **two users, divergent grants, run concurrently** | Sequential tests would pass even if per-operation keying were broken |
 | 8 | Token acquisition = **pluggable provider**; device flow default, password grant for tests | Device flow is the real CLI UX; tests must stay headless |
@@ -217,26 +217,40 @@ denial, and `IcebergExceptionMapper`. Decision #6 is proven at the Polaris end.
 (`polaris.shared.events`) are unaffected, but `SHOW NAMESPACES IN polaris` will fail for bob.
 Decide then whether that is desirable demo behaviour or an extra catalog-level grant.
 
-### 2.15 operation_id is not available to the interceptor (design correction)
+### 2.15 operation_id is not available to the interceptor (design correction, since resolved)
 All nine call sites in `core.py` invoke `self._execute_plan_request_with_metadata()` with no
 argument, and `operation_id` is a parameter of that private method with no public seam. So
 PySpark never populates `ExecutePlanRequest.operation_id`; the server generates it.
 
-⇒ The gRPC interceptor cannot know the operation id, so the holder is keyed by
-`(userId, sessionId)`, not by `ExecuteKey`. The execution thread still parses the job tag,
-but only the `User_`/`Session_` segments are used for lookup.
+⇒ The gRPC interceptor could not know the operation id, so the holder was keyed by
+`(userId, sessionId)`, not by `ExecuteKey`. The execution thread parsed the job tag, but only
+the `User_`/`Session_` segments were used for lookup.
 
 **Consequence, stated honestly:** decision #5's original claim that job-tag keying "makes
-concurrent queries in one session correct" does not hold for the *correlation ID*. Two
+concurrent queries in one session correct" did not hold for the *correlation ID*. Two
 queries running concurrently **in the same Connect session** under *different*
-`with correlation_id(...)` blocks can observe each other's ID. The token is unaffected
+`with correlation_id(...)` blocks could observe each other's ID. The token was unaffected
 (it is per-user/per-session by nature), and concurrency across *different* sessions — which
-is what the two-user demo exercises — is fully correct.
+is what the two-user demo exercises — was always correct.
 
-Optional fix if it matters later: monkeypatch `SparkConnectClient._execute_plan_request_with_metadata`
-in our client package to set `operation_id` to the correlation ID. The client validates it as
-a UUID4 (`core.py:1319`), which our default IDs already are, and Spark would then carry the
-correlation ID as its own operation id — visible in the job tag, ExecuteHolder and the Spark UI.
+**Resolved 2026-09-19.** `connect()` now patches `_execute_plan_request_with_metadata` on the
+client *instance* (not the class) to mint a UUID4 per request, `per_operation_ids=False` opts
+out, and the holder keys `(userId, sessionId, operationId)` with the session entry as fallback.
+The operation map is a bounded access-ordered LRU (2048): ReleaseExecute is exempt from
+authentication here, so there is no reliable end-of-operation hook, and an evicted entry simply
+degrades to the old session lookup.
+
+Two things the original plan got wrong, both verified against 4.1.3:
+
+* **`operation_id` cannot be the correlation ID.** `spark.sql(x).collect()` issues *two*
+  ExecutePlan requests, and a `correlation_id()` block spans several statements. Reusing an id
+  fails on the first statement with `INVALID_HANDLE.OPERATION_ALREADY_EXISTS`, or
+  `OPERATION_ABANDONED` once the first holder has been reaped.
+* **The cross-talk would not reproduce.** Operations in one session do overlap, but each
+  refreshes the session entry immediately before its own catalog call and so nearly always wins
+  the race. The keying is pinned down in `PropagatedIdentityHolderTest.PerOperationKeying`
+  instead; the end-to-end test asserts that Spark adopts the client's id (`opId=<uuid>` in its
+  logs), which does fail without the patch.
 
 ### 2.16 The Java plugin's contracts, confirmed by bytecode
 `mvn package` produces `spark-connect-propagation-0.1.0.jar` (904 KB). `javap` confirms:
@@ -254,8 +268,8 @@ the relocated gRPC classes and the unrelocated `org.apache.spark.connect.proto.*
 no build-time shading gymnastics were needed on our side.
 
 ### 2.17 End-to-end result (verified 2026-09-18)
-`11 passed` in `tests/test_propagation.py`, run from the compose `client` service. A further 17
-client unit tests and 10 Java unit tests run with no stack at all:
+`13 passed` in `tests/test_propagation.py`, run from the compose `client` service. A further 26
+client unit tests and 15 Java unit tests run with no stack at all:
 
 | Claim | Evidence |
 |---|---|

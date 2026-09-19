@@ -13,6 +13,13 @@ import uuid
 import pytest
 
 from spark_connect_propagation import active_correlation_id, correlation_id, new_correlation_id
+from spark_connect_propagation import auth
+from spark_connect_propagation.auth import (
+    DeviceCodeTokenProvider,
+    Endpoints,
+    OAuthError,
+    PasswordGrantTokenProvider,
+)
 from spark_connect_propagation.channel import (
     DEFAULT_CORRELATION_HEADER,
     DEFAULT_TOKEN_HEADER,
@@ -20,6 +27,11 @@ from spark_connect_propagation.channel import (
     subject_of,
 )
 from spark_connect_propagation.context import current_correlation_id
+from spark_connect_propagation.operation import (
+    SEAM,
+    install_operation_ids,
+    new_operation_id,
+)
 
 
 def jwt_with(claims: dict) -> str:
@@ -185,3 +197,121 @@ def test_subject_is_read_from_the_token():
 @pytest.mark.parametrize("value", ["", "garbage", "a.b", "a.!!!.c"])
 def test_subject_extraction_never_raises(value):
     assert subject_of(value) is None
+
+
+# ----------------------------------------------------------- operation ids --
+
+class FakeConnectClient:
+    """Stands in for SparkConnectClient: records what operation_id each request was built with."""
+
+    def __init__(self):
+        self.built = []
+
+    def _execute_plan_request_with_metadata(self, operation_id=None):
+        self.built.append(operation_id)
+        return f"request({operation_id})"
+
+
+def test_operation_ids_are_uuid4():
+    """PySpark validates the value with uuid.UUID(operation_id, version=4) before sending it."""
+    value = new_operation_id()
+
+    assert uuid.UUID(value).version == 4
+
+
+def test_every_request_gets_its_own_operation_id():
+    """The whole point: one correlation ID spans several operations, so ids cannot be shared.
+
+    `spark.sql(x).collect()` alone issues two ExecutePlan requests, and Spark rejects a repeated
+    operation id with INVALID_HANDLE.OPERATION_ALREADY_EXISTS.
+    """
+    client = FakeConnectClient()
+
+    assert install_operation_ids(client) is True
+    for _ in range(4):
+        client._execute_plan_request_with_metadata()
+
+    assert all(client.built), "every request must carry an operation id"
+    assert len(set(client.built)) == 4, f"ids must be unique, got {client.built}"
+
+
+def test_an_explicit_operation_id_is_left_alone():
+    """PySpark passes one itself in a few places; ours must not overwrite it."""
+    client = FakeConnectClient()
+    install_operation_ids(client)
+
+    client._execute_plan_request_with_metadata("caller-supplied")
+
+    assert client.built == ["caller-supplied"]
+
+
+def test_patching_is_per_instance():
+    """Only sessions this package opens are affected; the class stays untouched."""
+    patched, untouched = FakeConnectClient(), FakeConnectClient()
+    install_operation_ids(patched)
+
+    patched._execute_plan_request_with_metadata()
+    untouched._execute_plan_request_with_metadata()
+
+    assert patched.built[0] is not None
+    assert untouched.built == [None]
+    assert SEAM not in FakeConnectClient.__dict__ or callable(getattr(FakeConnectClient, SEAM))
+
+
+def test_a_missing_seam_is_survivable():
+    """A PySpark that renamed the private method costs per-operation keying, not the session."""
+
+    class WithoutTheSeam:
+        pass
+
+    assert install_operation_ids(WithoutTheSeam()) is False
+
+
+# ------------------------------------------------------------ token refresh --
+
+ISSUER = "http://keycloak:8080/realms/spark"
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [ConnectionResetError(104, "Connection reset by peer"), OAuthError("invalid_grant", "", 400)],
+)
+def test_device_flow_refresh_gives_up_quietly(monkeypatch, failure):
+    """A failed refresh must fall back to a device login, not abort with a stack trace.
+
+    Keycloak runs in dev mode here, so restarting the stack wipes every SSO session while the
+    token cache on disk still looks perfectly usable. The refresh then fails -- as a clean
+    invalid_grant once Keycloak is up, or as a reset connection while it is still coming up.
+    """
+    provider = DeviceCodeTokenProvider(endpoints=Endpoints(ISSUER), client_id="spark-cli")
+
+    def fail(url, form, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(auth, "_post_form", fail)
+
+    assert provider._try_refresh("rt-stale") is None
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [ConnectionResetError(104, "Connection reset by peer"), OAuthError("invalid_grant", "", 400)],
+)
+def test_password_grant_falls_back_to_a_full_grant(monkeypatch, failure):
+    """The suite's own provider: a failed refresh re-authenticates rather than raising."""
+    provider = PasswordGrantTokenProvider(
+        endpoints=Endpoints(ISSUER), client_id="spark-cli", username="alice", password="alice"
+    )
+    provider._tokens = auth._Tokens("stale", "rt-stale", expires_at=0.0)
+    grants = []
+
+    def fake_post(url, form, **kwargs):
+        grants.append(form["grant_type"])
+        if form["grant_type"] == "refresh_token":
+            raise failure
+        return {"access_token": "fresh", "refresh_token": "rt-new", "expires_in": 300}
+
+    monkeypatch.setattr(auth, "_post_form", fake_post)
+
+    assert provider.token() == "fresh"
+    assert grants == ["refresh_token", "password"]

@@ -8,7 +8,7 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-**Status:** complete and verified. 15 end-to-end checks against the live stack, plus 27 unit tests.
+**Status:** complete and verified. 17 end-to-end checks against the live stack, plus 41 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and
 [TODO.md](TODO.md) for the full decision record.
 
@@ -38,7 +38,7 @@ make test        # full suite on the host
 
 `make test-unit` runs the client unit tests with no stack, no docker and no network.
 `make test-container` runs the full suite inside the compose network, needing no host setup at
-all. Between them: 17 unit tests, 11 end-to-end, and 10 Java tests via `make jar`.
+all. Between them: 26 unit tests, 17 end-to-end, and 15 Java tests via `make jar`.
 
 `install.sh` never runs a privileged command on its own. It prints exactly what it wants to do
 and waits for a `y`. `--check` reports without changing anything, `--print-only` shows the
@@ -47,6 +47,12 @@ commands for you to run yourself.
 Everything uses the compose service names as hostnames — the browser, the client and the
 containers alike — because Keycloak stamps a single issuer into every token and OIDC validation
 fails if they disagree. That is the only reason `/etc/hosts` is involved.
+
+Spark Connect also checks a channel-level pre-shared key of its own, which has nothing to do with
+the user's token. The `Makefile` exports `CONNECT_SHARED_SECRET` (default `poc-shared-secret`) so
+the host-run targets and the server agree on it; driving the client by hand needs the same value
+in the environment, or Spark answers every RPC with `UNAUTHENTICATED: No authentication token
+provided` before it ever looks at the user token.
 
 ## The path a query takes
 
@@ -66,7 +72,7 @@ sequenceDiagram
     Note over S: validate JWT (cached JWKS)<br/>user_id == sub? session owned by sub?
     S->>K: RFC 8693 exchange (audience=polaris)
     K-->>S: token (aud=polaris, principal_name=alice)
-    Note over S: park identity, keyed by Connect session
+    Note over S: park identity, keyed by operation + session
     S->>S: ExecutionThread reads the job tag
     S->>P: loadTable + Bearer + X-Request-ID
     Note over P: principal_name to alice<br/>principal_roles to grants
@@ -80,7 +86,8 @@ The awkward step is the one in the middle. Spark Connect runs every operation on
 unpooled thread, so nothing the gRPC interceptor puts in a `ThreadLocal` survives to the code
 that talks to Polaris. The bridge is the job tag Spark applies to that thread —
 `SparkConnect_OperationTag_User_..._Session_..._Operation_...` — which the Iceberg `AuthManager`
-parses to recover the session and look up the credential.
+parses to recover the Connect coordinates and look up the credential. The `Operation_` segment is
+usable only because the client fills in `operation_id`, which PySpark leaves to the server.
 
 ## Layout
 
@@ -104,7 +111,7 @@ demo/  tests/           walkthrough and verification suite
 | `UserTokenServerInterceptor` | Validates the JWT, enforces subject-to-session binding, triggers the exchange, sets MDC |
 | `TokenValidator` | nimbus with a cached JWKS, so steady-state validation touches no network |
 | `TokenExchangeService` | RFC 8693 over the JDK HTTP client, cached by SHA-256 of the inbound token |
-| `PropagatedIdentityHolder` | The thread bridge; parses the job tag off the ExecutionThread |
+| `PropagatedIdentityHolder` | The thread bridge; parses the job tag off the ExecutionThread and resolves the identity by operation, then by session |
 | `PropagatingRestAuthManager` | Stamps `Authorization` and `X-Request-ID` on every Polaris call |
 
 The jar is baked into `$SPARK_HOME/jars` rather than passed with `--jars`. That is load-bearing:
@@ -126,9 +133,17 @@ with correlation_id() as cid:
     print("trace it:", cid)
 ```
 
-Built entirely on public PySpark API — `DefaultChannelBuilder`, `add_interceptor` and
-`builder.channelBuilder` — so there is no fork and no monkeypatching. Token acquisition is behind
-a `TokenProvider` protocol: device flow for humans, password grant so the tests stay headless.
+The channel is built entirely on public PySpark API — `DefaultChannelBuilder`, `add_interceptor`
+and `builder.channelBuilder` — so nothing here is a fork. Token acquisition is behind a
+`TokenProvider` protocol: device flow for humans, password grant so the tests stay headless.
+
+One private seam is used deliberately. PySpark never fills in
+`ExecutePlanRequest.operation_id`, so the server generates an id the client never learns and the
+interceptor can only file what it knows under the session. `connect()` patches
+`_execute_plan_request_with_metadata` **on the client instance** to mint one per request, which
+lets the server key per operation instead; pass `per_operation_ids=False` for a stock client. If a
+future PySpark renames that method the patch is skipped, and the server falls back to keying by
+session.
 
 ## The Polaris console
 

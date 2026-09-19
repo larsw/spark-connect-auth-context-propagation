@@ -10,6 +10,7 @@ from .auth import (
 )
 from .channel import PropagatingChannelBuilder, PropagationInterceptor
 from .context import active_correlation_id, correlation_id, new_correlation_id
+from .operation import install_operation_ids, new_operation_id
 from .session import connect
 
 __all__ = [
@@ -17,6 +18,8 @@ __all__ = [
     "correlation_id",
     "active_correlation_id",
     "new_correlation_id",
+    "install_operation_ids",
+    "new_operation_id",
     "PropagatingChannelBuilder",
     "PropagationInterceptor",
     "TokenProvider",

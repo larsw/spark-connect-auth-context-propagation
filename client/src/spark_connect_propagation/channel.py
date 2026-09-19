@@ -1,7 +1,8 @@
 """A Spark Connect channel that carries a user token and a correlation ID on every RPC.
 
 Built entirely on public PySpark API -- ``DefaultChannelBuilder``, ``add_interceptor`` and
-``SparkSession.builder.channelBuilder`` -- so no fork or monkeypatch is involved.
+``SparkSession.builder.channelBuilder`` -- so nothing in the channel is a fork or a patch. (The
+one private seam this package does use is in :mod:`.operation`, and is not on this path.)
 
 Why headers rather than the request body: PySpark does expose
 ``SparkConnectClient.add_global_user_context_extension``, but Spark Connect stringifies the whole

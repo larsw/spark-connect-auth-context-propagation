@@ -144,4 +144,94 @@ class PropagatedIdentityHolderTest {
       assertTrue(rendered.contains("cid-1"));
     }
   }
+
+  @Nested
+  @DisplayName("per-operation keying")
+  class PerOperationKeying {
+
+    private static final String USER = "alice-sub";
+    private static final String SESSION = "session-1";
+
+    private PropagatedIdentity identity(String correlationId) {
+      return new PropagatedIdentity(USER, "alice", "token", correlationId, 0L);
+    }
+
+    private PropagatedIdentityHolder.JobTag tag(String operationId) {
+      return new PropagatedIdentityHolder.JobTag(USER, SESSION, operationId);
+    }
+
+    @Test
+    @DisplayName("two operations in one session keep their own correlation IDs")
+    void operationsDoNotOverwriteEachOther() {
+      // The defect this keying exists to fix: with only a session key, the second put() would
+      // replace the first and both operations would report cid-2.
+      PropagatedIdentityHolder.put(USER, SESSION, "op-1", identity("cid-1"));
+      PropagatedIdentityHolder.put(USER, SESSION, "op-2", identity("cid-2"));
+
+      assertEquals("cid-1", PropagatedIdentityHolder.identityFor(tag("op-1")).orElseThrow()
+          .correlationId());
+      assertEquals("cid-2", PropagatedIdentityHolder.identityFor(tag("op-2")).orElseThrow()
+          .correlationId());
+    }
+
+    @Test
+    @DisplayName("falls back to the session when the client sent no operation id")
+    void fallsBackForAStockClient() {
+      // What a plain PySpark client produces: ExecutePlanRequest.operation_id is left empty.
+      PropagatedIdentityHolder.put(USER, SESSION, null, identity("cid-session"));
+
+      assertEquals(
+          "cid-session",
+          PropagatedIdentityHolder.identityFor(tag("server-generated-op")).orElseThrow()
+              .correlationId());
+    }
+
+    @Test
+    @DisplayName("falls back to the session once an operation has aged out")
+    void fallsBackAfterEviction() {
+      PropagatedIdentityHolder.put(USER, SESSION, "op-old", identity("cid-old"));
+      for (int i = 0; i < 2100; i++) {
+        PropagatedIdentityHolder.put(USER, SESSION, "op-" + i, identity("cid-" + i));
+      }
+
+      // Evicted, so the lookup degrades to the session entry rather than returning nothing --
+      // still the right user, which is the property that matters.
+      assertTrue(PropagatedIdentityHolder.identityFor(tag("op-old")).isPresent());
+      assertTrue(
+          PropagatedIdentityHolder.trackedOperationCount() <= 2048,
+          "the operation map must stay bounded, was "
+              + PropagatedIdentityHolder.trackedOperationCount());
+    }
+
+    @Test
+    @DisplayName("forgetting a session drops its operations too")
+    void forgetClearsOperations() {
+      PropagatedIdentityHolder.put(USER, SESSION, "op-1", identity("cid-1"));
+      PropagatedIdentityHolder.put("bob-sub", "session-2", "op-2", identity("cid-2"));
+
+      PropagatedIdentityHolder.forget(USER, SESSION);
+
+      assertTrue(PropagatedIdentityHolder.identityFor(tag("op-1")).isEmpty());
+      assertTrue(
+          PropagatedIdentityHolder.identityFor(
+                  new PropagatedIdentityHolder.JobTag("bob-sub", "session-2", "op-2"))
+              .isPresent(),
+          "another user's operations must survive");
+    }
+
+    @Test
+    @DisplayName("an operation id never crosses sessions or users")
+    void operationKeyIncludesUserAndSession() {
+      PropagatedIdentityHolder.put(USER, SESSION, "op-shared", identity("cid-alice"));
+
+      assertTrue(
+          PropagatedIdentityHolder.identityFor(
+                  new PropagatedIdentityHolder.JobTag("bob-sub", SESSION, "op-shared"))
+              .isEmpty());
+      assertTrue(
+          PropagatedIdentityHolder.identityFor(
+                  new PropagatedIdentityHolder.JobTag(USER, "session-other", "op-shared"))
+              .isEmpty());
+    }
+  }
 }

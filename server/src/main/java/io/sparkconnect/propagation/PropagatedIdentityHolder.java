@@ -1,6 +1,9 @@
 package io.sparkconnect.propagation;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -19,14 +22,17 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>SparkConnect_OperationTag_User_&lt;userId&gt;_Session_&lt;sessionId&gt;_Operation_&lt;operationId&gt;</pre>
  *
- * <p>So the interceptor writes here keyed by (userId, sessionId), and the AuthManager recovers that
- * key by parsing the job tag off the calling thread's local properties.
+ * <p>So the interceptor writes here keyed by the operation when it knows it and by (userId,
+ * sessionId) always, and the AuthManager recovers both keys by parsing the job tag off the calling
+ * thread's local properties.
  *
- * <p><strong>Why not key by operation?</strong> PySpark never populates
- * {@code ExecutePlanRequest.operation_id} -- every call site invokes the private
- * {@code _execute_plan_request_with_metadata()} with no argument -- so the interceptor cannot know
- * it. Two queries running concurrently in the <em>same</em> Connect session under different
- * correlation IDs may therefore observe each other's ID. Different sessions are unaffected.
+ * <p><strong>Keying by operation.</strong> Stock PySpark leaves
+ * {@code ExecutePlanRequest.operation_id} empty -- every call site invokes the private
+ * {@code _execute_plan_request_with_metadata()} with no argument -- and the server then generates
+ * one the interceptor never sees. Our client fills it in (see the Python {@code operation} module),
+ * which is what lets two operations running concurrently in the <em>same</em> Connect session under
+ * different correlation IDs stay apart. A client that does not gets the session entry instead:
+ * still the right user, but possibly a sibling operation's correlation ID.
  *
  * <p><strong>Classloader warning.</strong> This class holds static state, so the interceptor and
  * the AuthManager must be loaded by the same classloader. That is why the plugin jar is baked into
@@ -48,8 +54,28 @@ public final class PropagatedIdentityHolder {
 
   private static final String JOB_TAGS_SEPARATOR = ",";
 
+  /**
+   * How many in-flight operations to remember. An operation id is used once and never again, so
+   * these entries would otherwise accumulate for the life of the JVM. Bounded rather than tied to
+   * ReleaseExecute because that RPC is exempt from authentication here (a client whose token has
+   * expired must still be able to release server state), so there is no reliable end-of-operation
+   * hook in this interceptor. Ageing an entry out is safe: the lookup falls back to the session
+   * entry, which is the behaviour a client that mints no operation ids gets anyway.
+   */
+  private static final int MAX_TRACKED_OPERATIONS = 2048;
+
   private static final ConcurrentMap<SessionKey, PropagatedIdentity> BY_SESSION =
       new ConcurrentHashMap<>();
+
+  /** Access-ordered, so the entries that age out are the ones nothing has looked up lately. */
+  private static final Map<OperationKey, PropagatedIdentity> BY_OPERATION =
+      Collections.synchronizedMap(
+          new LinkedHashMap<>(256, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<OperationKey, PropagatedIdentity> eldest) {
+              return size() > MAX_TRACKED_OPERATIONS;
+            }
+          });
 
   /**
    * sessionId to the subject that first claimed it. Spark Connect itself imposes no binding between
@@ -61,11 +87,32 @@ public final class PropagatedIdentityHolder {
   private PropagatedIdentityHolder() {}
 
   public static void put(String userId, String sessionId, PropagatedIdentity identity) {
+    put(userId, sessionId, null, identity);
+  }
+
+  /**
+   * Files an identity under the session, and additionally under the operation when the client
+   * supplied an operation id. The session entry is always written: AnalyzePlan and Config carry no
+   * operation id at all, and it is the fallback for anything the operation map has forgotten.
+   */
+  public static void put(
+      String userId, String sessionId, String operationId, PropagatedIdentity identity) {
     BY_SESSION.put(new SessionKey(userId, sessionId), identity);
+    if (operationId != null && !operationId.isBlank()) {
+      BY_OPERATION.put(new OperationKey(userId, sessionId, operationId), identity);
+    }
   }
 
   public static void forget(String userId, String sessionId) {
     BY_SESSION.remove(new SessionKey(userId, sessionId));
+    synchronized (BY_OPERATION) {
+      BY_OPERATION
+          .keySet()
+          .removeIf(
+              key ->
+                  Objects.equals(key.userId(), userId)
+                      && Objects.equals(key.sessionId(), sessionId));
+    }
     if (sessionId != null) {
       SESSION_OWNER.remove(sessionId);
     }
@@ -89,9 +136,25 @@ public final class PropagatedIdentityHolder {
 
   /** Looks up the identity for whichever Connect operation owns the calling thread. */
   public static Optional<PropagatedIdentity> currentIdentity() {
-    return currentJobTag()
-        .map(tag -> new SessionKey(tag.userId(), tag.sessionId()))
-        .map(BY_SESSION::get);
+    return currentJobTag().flatMap(PropagatedIdentityHolder::identityFor);
+  }
+
+  /**
+   * The identity for one set of Connect coordinates: the exact operation if we have it, otherwise
+   * the session it belongs to.
+   *
+   * <p>The fallback is never wrong about <em>who</em> the caller is -- {@code userId} is pinned to
+   * the authenticated subject by the interceptor, so a session entry cannot belong to anyone else.
+   * It can only be stale in the correlation ID, which is exactly the limitation that populating
+   * {@code operation_id} removes.
+   */
+  static Optional<PropagatedIdentity> identityFor(JobTag tag) {
+    PropagatedIdentity perOperation =
+        BY_OPERATION.get(new OperationKey(tag.userId(), tag.sessionId(), tag.operationId()));
+    if (perOperation != null) {
+      return Optional.of(perOperation);
+    }
+    return Optional.ofNullable(BY_SESSION.get(new SessionKey(tag.userId(), tag.sessionId())));
   }
 
   /** The parsed Connect coordinates of the calling thread, if it is an ExecutionThread. */
@@ -151,11 +214,19 @@ public final class PropagatedIdentityHolder {
 
   static void clearForTests() {
     BY_SESSION.clear();
+    BY_OPERATION.clear();
     SESSION_OWNER.clear();
+  }
+
+  static int trackedOperationCount() {
+    return BY_OPERATION.size();
   }
 
   /** Identifies a Connect session as Spark keys it: {@code SessionKey(userId, sessionId)}. */
   record SessionKey(String userId, String sessionId) {}
+
+  /** Identifies one operation as Spark keys it: {@code ExecuteKey(userId, sessionId, opId)}. */
+  record OperationKey(String userId, String sessionId, String operationId) {}
 
   /** The three coordinates Spark Connect encodes into its operation job tag. */
   public record JobTag(String userId, String sessionId, String operationId) {}
