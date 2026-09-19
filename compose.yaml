@@ -221,6 +221,9 @@ services:
       SPARK_REMOTE: "sc://spark-connect:15002"
       KEYCLOAK_ISSUER: "http://keycloak:8080/realms/spark"
       POLARIS_URL: "http://polaris:8181"
+      # Port 80 inside the network: 3000 is only the host-published port, so the default the
+      # tests use on the host would connect-refuse from in here.
+      POLARIS_CONSOLE_URL: "http://polaris-console"
       CONNECT_SHARED_SECRET: "${CONNECT_SHARED_SECRET:-poc-shared-secret}"
     volumes:
       - ./client:/work/client:ro

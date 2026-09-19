@@ -210,13 +210,20 @@ The stack includes the Apache Polaris web console, which lives in
 a pinned upstream commit rather than vendoring a copy, so there is nothing of theirs to keep in
 sync here.
 
-Open **http://localhost:3000** and sign in as **alice** or **bob**. Note the hostname: this is the
-one part of the stack you must *not* reach by its service name. The console signs in with PKCE
-S256, which needs `crypto.subtle.digest`, and browsers expose `window.crypto.subtle` only in a
-secure context — HTTPS, or plain HTTP on `localhost`/`127.0.0.1`. That check looks at the literal
-hostname, so `http://polaris-console:3000` does not qualify even though the alias points at
-loopback, and the sign-in button fails with `Cannot read properties of undefined (reading
-'digest')`. The console's own origin is not an issuer, so nothing else cares which one you use.
+Open **[http://localhost:3000](http://localhost:3000)** and sign in as **alice** or **bob**. Note
+the hostname: this is the one part of the stack you must *not* reach by its service name. The
+console signs in with PKCE S256, which needs `crypto.subtle.digest`, and browsers expose
+`window.crypto.subtle` only in a secure context — HTTPS, or plain HTTP on
+`localhost`/`127.0.0.1`. That check looks at the literal hostname, so `http://polaris-console:3000`
+does not qualify even though the alias points at loopback, and the sign-in button would fail with
+`Cannot read properties of undefined (reading 'digest')` — a message that names neither the real
+problem nor the fix. The console's own origin is not an issuer, so nothing else cares which one
+you use.
+
+Rather than leave that as a trap, `config.js` checks `isSecureContext` before the app loads and,
+on a hostname that cannot work, replaces the page with an explanation and a link to the right one.
+It is our file, generated at container start, and it is a classic script while the app bundle is a
+deferred module — so it always runs first.
 
 It uses authorization code
 with PKCE against the same Keycloak realm Spark uses, so the token it receives carries the same
@@ -254,11 +261,16 @@ line up by eye.
 `alice`/`alice` and `bob`/`bob` in the `spark` realm; Keycloak admin `admin`/`admin`; MinIO
 `minio_root`/`m1n1opwd`; Polaris root `root`/`s3cr3t`. All of it is throwaway.
 
+The quickest place to spend those two logins is the **[Polaris console](http://localhost:3000)** —
+the same grants the Spark path enforces, seen through a UI instead of a stack trace. Open it on
+`localhost`, not on `polaris-console`: see [The Polaris console](#the-polaris-console) for why, and
+what the page tells you if you get it wrong.
+
 | Service | URL |
 |---|---|
 | Keycloak | http://keycloak:8080 |
 | Polaris | http://polaris:8181 |
-| Polaris console | http://localhost:3000 (must be localhost, not the service name — see above) |
+| **Polaris console** | **[http://localhost:3000](http://localhost:3000)** — localhost, never the service name ([why](#the-polaris-console)) |
 | MinIO console | http://minio:9001 |
 | Spark master | http://spark-master:8082 |
 | Spark driver UI | http://spark-connect:4040 |
