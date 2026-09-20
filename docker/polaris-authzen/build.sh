@@ -15,7 +15,7 @@
 set -euo pipefail
 
 FORK_URL="${POLARIS_FORK_URL:-https://github.com/larsw/polaris.git}"
-FORK_REF="${POLARIS_FORK_REF:-c71717a91c52c62bb9520656bef442fd5da04650}"
+FORK_REF="${POLARIS_FORK_REF:-24702b214ae07fe738eca968e5165dffce3662ed}"
 FORK_BRANCH="${POLARIS_FORK_BRANCH:-feat/authzen-pdp-support}"
 
 # What compose.yaml expects. Polaris's own build tags apache/polaris:<version>; we retag so it is
