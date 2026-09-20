@@ -30,7 +30,10 @@ services:
       KC_HTTP_ENABLED: "true"
     volumes:
       - ./docker/keycloak/spark-realm.json:/opt/keycloak/data/import/spark-realm.json:ro
-    command: ["start-dev", "--import-realm", "--health-enabled=true"]
+    # --features=authzen turns on Keycloak's experimental Authorization API (AuthZEN) endpoints,
+    # which is what makes this Keycloak a Policy Decision Point that Polaris can call. Confirm with
+    #   curl -s http://keycloak:8080/realms/spark/.well-known/authzen-configuration
+    command: ["start-dev", "--import-realm", "--health-enabled=true", "--features=authzen"]
     healthcheck:
       test: "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"
       interval: 5s
@@ -93,7 +96,9 @@ services:
 
   # ----------------------------------------------------------------- Polaris --
   polaris:
-    image: apache/polaris:1.7.0
+    # A FORK, not the released image: larsw/polaris @ feat/authzen-pdp-support, which adds the
+    # AuthZEN authorizer. Built locally by `make polaris-image` -- see docker/polaris-authzen/.
+    image: spark-connect-propagation/polaris-authzen:1.8.0-SNAPSHOT
     ports:
       - "8181:8181"
       - "8182:8182"
@@ -139,6 +144,29 @@ services:
       quarkus.http.cors.exposed-headers: "*"
       polaris.readiness.ignore-severe-issues: "true"
       quarkus.otel.sdk.disabled: "true"
+
+      # ---- AuthZEN: authorization decisions come from Keycloak, not from Polaris grants ----
+      # Polaris stops deciding and asks a Policy Decision Point over the OpenID AuthZEN
+      # Authorization API. The grants the bootstrap still creates are no longer what answers
+      # "may bob read this?" -- the polaris-pdp client's permissions in the realm are.
+      polaris.authorization.type: "authzen"
+
+      # Endpoints are discovered from <pdp-uri>/.well-known/authzen-configuration.
+      polaris.authorization.authzen.pdp-uri: "http://keycloak:8080/realms/spark"
+
+      # Keycloak requires the caller to be a client with authorization services enabled, and
+      # issues short-lived tokens, so Polaris fetches and refreshes its own.
+      polaris.authorization.authzen.auth.type: "client-credentials"
+      polaris.authorization.authzen.auth.client-credentials.token-endpoint: "http://keycloak:8080/realms/spark/protocol/openid-connect/token"
+      polaris.authorization.authzen.auth.client-credentials.client-id: "polaris-pdp"
+      polaris.authorization.authzen.auth.client-credentials.client-secret: "polaris-pdp-secret"
+
+      # Payload shaping for Keycloak. `name` rather than the default `path` so resource.id is the
+      # leaf -- `events`, `salaries` -- which is what the realm registers as resources, and what
+      # lets one policy distinguish the shared table from the restricted one.
+      polaris.authorization.authzen.mapping.subject-id-prefix: "username:"
+      polaris.authorization.authzen.mapping.resource-type-prefix: "polaris:"
+      polaris.authorization.authzen.mapping.resource-id-format: "name"
 
       # Polaris is the ONLY component holding MinIO's root credentials -- it needs them
       # to call STS AssumeRole when vending scoped credentials. Spark has none.

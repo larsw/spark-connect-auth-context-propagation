@@ -269,6 +269,18 @@ def test_concurrent_operations_in_one_session_keep_their_own_correlation_id(alic
 
 # ------------------------------------------------------- vended credentials --
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "AuthZEN branch: with polaris.authorization.type=authzen, Polaris vends alice and bob "
+        "the SAME credential for the same table -- identical access key, identical session "
+        "token, and a session policy granting s3:PutObject/s3:DeleteObject to both. The catalog "
+        "decision still differentiates them (bob is refused restricted.salaries by the PDP), but "
+        "the data-plane credential no longer does. An external PDP answers allow/deny; it does "
+        "not hand back the privilege set Polaris previously used to shape the vended credential. "
+        "Left failing on purpose: see docs/authzen-pdp.md. Remove this marker if the fork fixes it."
+    ),
+)
 def test_polaris_vends_distinct_temporary_credentials_per_user(alice, bob):
     """D7: the data plane is identity-aware, not just the catalog.
 

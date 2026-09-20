@@ -17,7 +17,7 @@ JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
 
 .DEFAULT_GOAL := help
-.PHONY: help install jar client-jar client-rust build up bootstrap demo demo-jvm demo-rust test-unit test test-jvm test-jvm-it test-rust test-rust-it test-container logs cid ps down clean
+.PHONY: help install jar client-jar client-rust polaris-image build up bootstrap demo demo-jvm demo-rust test-unit test test-jvm test-jvm-it test-rust test-rust-it test-container logs cid ps down clean
 
 help: ## Show this help
 	@echo "Spark Connect propagation PoC"
@@ -41,6 +41,9 @@ client-jar: ## Build the JVM client library and install it into the local Maven 
 
 client-rust: ## Build the Rust client crate
 	@cargo build --manifest-path client-rust/Cargo.toml
+
+polaris-image: ## Build the AuthZEN Polaris image from the fork (needed before `make up`)
+	@./docker/polaris-authzen/build.sh
 
 build: jar ## Build the plugin jar and the Spark image
 	@$(COMPOSE) build

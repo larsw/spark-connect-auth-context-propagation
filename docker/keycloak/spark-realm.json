@@ -58,6 +58,13 @@
       "realmRoles": [
         "analyst"
       ]
+    },
+    {
+      "username": "root",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Polaris",
+      "lastName": "Bootstrap"
     }
   ],
   "clients": [
@@ -229,6 +236,4839 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "polaris-pdp",
+      "name": "Polaris AuthZEN PDP",
+      "description": "Keycloak acts as the Policy Decision Point for Polaris. Polaris calls its AuthZEN endpoints as this client; the resources, scopes and permissions below ARE the policy.",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "polaris-pdp-secret",
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "authorizationSettings": {
+        "allowRemoteResourceManagement": false,
+        "policyEnforcementMode": "ENFORCING",
+        "decisionStrategy": "AFFIRMATIVE",
+        "resources": [
+          {
+            "name": "POLARIS",
+            "type": "polaris:ROOT",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          },
+          {
+            "name": "poc_catalog",
+            "type": "polaris:CATALOG",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          },
+          {
+            "name": "shared",
+            "type": "polaris:NAMESPACE",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          },
+          {
+            "name": "restricted",
+            "type": "polaris:NAMESPACE",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          },
+          {
+            "name": "events",
+            "type": "polaris:TABLE_LIKE",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          },
+          {
+            "name": "salaries",
+            "type": "polaris:TABLE_LIKE",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          },
+          {
+            "name": "alice",
+            "type": "polaris:PRINCIPAL",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          },
+          {
+            "name": "bob",
+            "type": "polaris:PRINCIPAL",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          },
+          {
+            "name": "data_engineer",
+            "type": "polaris:PRINCIPAL_ROLE",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          },
+          {
+            "name": "analyst",
+            "type": "polaris:PRINCIPAL_ROLE",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          },
+          {
+            "name": "engineer",
+            "type": "polaris:CATALOG_ROLE",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          },
+          {
+            "name": "shared_reader",
+            "type": "polaris:CATALOG_ROLE",
+            "ownerManagedAccess": false,
+            "attributes": {},
+            "uris": [],
+            "scopes": [
+              {
+                "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ADD_TABLE_PARTITION_SPEC"
+              },
+              {
+                "name": "ADD_TABLE_SCHEMA"
+              },
+              {
+                "name": "ADD_TABLE_SNAPSHOT"
+              },
+              {
+                "name": "ADD_TABLE_SORT_ORDER"
+              },
+              {
+                "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+              },
+              {
+                "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "ASSIGN_TABLE_UUID"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_CATALOG"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_NAMESPACE"
+              },
+              {
+                "name": "ATTACH_POLICY_TO_TABLE"
+              },
+              {
+                "name": "COMMIT_TRANSACTION"
+              },
+              {
+                "name": "CREATE_CATALOG"
+              },
+              {
+                "name": "CREATE_CATALOG_ROLE"
+              },
+              {
+                "name": "CREATE_NAMESPACE"
+              },
+              {
+                "name": "CREATE_POLICY"
+              },
+              {
+                "name": "CREATE_PRINCIPAL"
+              },
+              {
+                "name": "CREATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "CREATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT"
+              },
+              {
+                "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED"
+              },
+              {
+                "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "CREATE_VIEW"
+              },
+              {
+                "name": "DELETE_CATALOG"
+              },
+              {
+                "name": "DELETE_CATALOG_ROLE"
+              },
+              {
+                "name": "DELETE_PRINCIPAL"
+              },
+              {
+                "name": "DELETE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_CATALOG"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_NAMESPACE"
+              },
+              {
+                "name": "DETACH_POLICY_FROM_TABLE"
+              },
+              {
+                "name": "DROP_NAMESPACE"
+              },
+              {
+                "name": "DROP_POLICY"
+              },
+              {
+                "name": "DROP_SEMANTIC_MODEL"
+              },
+              {
+                "name": "DROP_TABLE_WITHOUT_PURGE"
+              },
+              {
+                "name": "DROP_TABLE_WITH_PURGE"
+              },
+              {
+                "name": "DROP_VIEW"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+              },
+              {
+                "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+              },
+              {
+                "name": "GET_CATALOG"
+              },
+              {
+                "name": "GET_CATALOG_ROLE"
+              },
+              {
+                "name": "GET_PRINCIPAL"
+              },
+              {
+                "name": "GET_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_CATALOGS"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES"
+              },
+              {
+                "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+              },
+              {
+                "name": "LIST_NAMESPACES"
+              },
+              {
+                "name": "LIST_POLICY"
+              },
+              {
+                "name": "LIST_PRINCIPALS"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES"
+              },
+              {
+                "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+              },
+              {
+                "name": "LIST_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LIST_TABLES"
+              },
+              {
+                "name": "LIST_VIEWS"
+              },
+              {
+                "name": "LOAD_NAMESPACE_METADATA"
+              },
+              {
+                "name": "LOAD_POLICY"
+              },
+              {
+                "name": "LOAD_SEMANTIC_MODEL"
+              },
+              {
+                "name": "LOAD_TABLE"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "LOAD_VIEW"
+              },
+              {
+                "name": "NAMESPACE_EXISTS"
+              },
+              {
+                "name": "REGISTER_TABLE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+              },
+              {
+                "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+              },
+              {
+                "name": "REGISTER_VIEW"
+              },
+              {
+                "name": "REMOVE_TABLE_PARTITION_SPECS"
+              },
+              {
+                "name": "REMOVE_TABLE_PROPERTIES"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOTS"
+              },
+              {
+                "name": "REMOVE_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "REMOVE_TABLE_STATISTICS"
+              },
+              {
+                "name": "RENAME_TABLE"
+              },
+              {
+                "name": "RENAME_VIEW"
+              },
+              {
+                "name": "REPLACE_VIEW"
+              },
+              {
+                "name": "REPORT_READ_METRICS"
+              },
+              {
+                "name": "REPORT_WRITE_METRICS"
+              },
+              {
+                "name": "RESET_CREDENTIALS"
+              },
+              {
+                "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+              },
+              {
+                "name": "ROTATE_CREDENTIALS"
+              },
+              {
+                "name": "SEND_NOTIFICATIONS"
+              },
+              {
+                "name": "SET_TABLE_CURRENT_SCHEMA"
+              },
+              {
+                "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+              },
+              {
+                "name": "SET_TABLE_LOCATION"
+              },
+              {
+                "name": "SET_TABLE_PROPERTIES"
+              },
+              {
+                "name": "SET_TABLE_SNAPSHOT_REF"
+              },
+              {
+                "name": "SET_TABLE_STATISTICS"
+              },
+              {
+                "name": "TABLE_EXISTS"
+              },
+              {
+                "name": "UPDATE_CATALOG"
+              },
+              {
+                "name": "UPDATE_CATALOG_ROLE"
+              },
+              {
+                "name": "UPDATE_NAMESPACE_PROPERTIES"
+              },
+              {
+                "name": "UPDATE_POLICY"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL"
+              },
+              {
+                "name": "UPDATE_PRINCIPAL_ROLE"
+              },
+              {
+                "name": "UPDATE_SEMANTIC_MODEL"
+              },
+              {
+                "name": "UPDATE_TABLE"
+              },
+              {
+                "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+              },
+              {
+                "name": "UPGRADE_TABLE_FORMAT_VERSION"
+              },
+              {
+                "name": "VIEW_EXISTS"
+              }
+            ]
+          }
+        ],
+        "scopes": [
+          {
+            "name": "ADD_CATALOG_GRANT_TO_CATALOG_ROLE"
+          },
+          {
+            "name": "ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE"
+          },
+          {
+            "name": "ADD_POLICY_GRANT_TO_CATALOG_ROLE"
+          },
+          {
+            "name": "ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE"
+          },
+          {
+            "name": "ADD_TABLE_GRANT_TO_CATALOG_ROLE"
+          },
+          {
+            "name": "ADD_TABLE_PARTITION_SPEC"
+          },
+          {
+            "name": "ADD_TABLE_SCHEMA"
+          },
+          {
+            "name": "ADD_TABLE_SNAPSHOT"
+          },
+          {
+            "name": "ADD_TABLE_SORT_ORDER"
+          },
+          {
+            "name": "ADD_VIEW_GRANT_TO_CATALOG_ROLE"
+          },
+          {
+            "name": "ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "ASSIGN_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "ASSIGN_TABLE_UUID"
+          },
+          {
+            "name": "ATTACH_POLICY_TO_CATALOG"
+          },
+          {
+            "name": "ATTACH_POLICY_TO_NAMESPACE"
+          },
+          {
+            "name": "ATTACH_POLICY_TO_TABLE"
+          },
+          {
+            "name": "COMMIT_TRANSACTION"
+          },
+          {
+            "name": "CREATE_CATALOG"
+          },
+          {
+            "name": "CREATE_CATALOG_ROLE"
+          },
+          {
+            "name": "CREATE_NAMESPACE"
+          },
+          {
+            "name": "CREATE_POLICY"
+          },
+          {
+            "name": "CREATE_PRINCIPAL"
+          },
+          {
+            "name": "CREATE_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "CREATE_SEMANTIC_MODEL"
+          },
+          {
+            "name": "CREATE_TABLE_DIRECT"
+          },
+          {
+            "name": "CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION"
+          },
+          {
+            "name": "CREATE_TABLE_STAGED"
+          },
+          {
+            "name": "CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION"
+          },
+          {
+            "name": "CREATE_VIEW"
+          },
+          {
+            "name": "DELETE_CATALOG"
+          },
+          {
+            "name": "DELETE_CATALOG_ROLE"
+          },
+          {
+            "name": "DELETE_PRINCIPAL"
+          },
+          {
+            "name": "DELETE_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "DETACH_POLICY_FROM_CATALOG"
+          },
+          {
+            "name": "DETACH_POLICY_FROM_NAMESPACE"
+          },
+          {
+            "name": "DETACH_POLICY_FROM_TABLE"
+          },
+          {
+            "name": "DROP_NAMESPACE"
+          },
+          {
+            "name": "DROP_POLICY"
+          },
+          {
+            "name": "DROP_SEMANTIC_MODEL"
+          },
+          {
+            "name": "DROP_TABLE_WITHOUT_PURGE"
+          },
+          {
+            "name": "DROP_TABLE_WITH_PURGE"
+          },
+          {
+            "name": "DROP_VIEW"
+          },
+          {
+            "name": "GET_APPLICABLE_POLICIES_ON_CATALOG"
+          },
+          {
+            "name": "GET_APPLICABLE_POLICIES_ON_NAMESPACE"
+          },
+          {
+            "name": "GET_APPLICABLE_POLICIES_ON_TABLE"
+          },
+          {
+            "name": "GET_CATALOG"
+          },
+          {
+            "name": "GET_CATALOG_ROLE"
+          },
+          {
+            "name": "GET_PRINCIPAL"
+          },
+          {
+            "name": "GET_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE"
+          },
+          {
+            "name": "LIST_CATALOGS"
+          },
+          {
+            "name": "LIST_CATALOG_ROLES"
+          },
+          {
+            "name": "LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "LIST_GRANTS_FOR_CATALOG_ROLE"
+          },
+          {
+            "name": "LIST_NAMESPACES"
+          },
+          {
+            "name": "LIST_POLICY"
+          },
+          {
+            "name": "LIST_PRINCIPALS"
+          },
+          {
+            "name": "LIST_PRINCIPAL_ROLES"
+          },
+          {
+            "name": "LIST_PRINCIPAL_ROLES_ASSIGNED"
+          },
+          {
+            "name": "LIST_SEMANTIC_MODEL"
+          },
+          {
+            "name": "LIST_TABLES"
+          },
+          {
+            "name": "LIST_VIEWS"
+          },
+          {
+            "name": "LOAD_NAMESPACE_METADATA"
+          },
+          {
+            "name": "LOAD_POLICY"
+          },
+          {
+            "name": "LOAD_SEMANTIC_MODEL"
+          },
+          {
+            "name": "LOAD_TABLE"
+          },
+          {
+            "name": "LOAD_TABLE_WITH_READ_DELEGATION"
+          },
+          {
+            "name": "LOAD_TABLE_WITH_WRITE_DELEGATION"
+          },
+          {
+            "name": "LOAD_VIEW"
+          },
+          {
+            "name": "NAMESPACE_EXISTS"
+          },
+          {
+            "name": "REGISTER_TABLE"
+          },
+          {
+            "name": "REGISTER_TABLE_OVERWRITE"
+          },
+          {
+            "name": "REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION"
+          },
+          {
+            "name": "REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION"
+          },
+          {
+            "name": "REGISTER_TABLE_WITH_READ_DELEGATION"
+          },
+          {
+            "name": "REGISTER_TABLE_WITH_WRITE_DELEGATION"
+          },
+          {
+            "name": "REGISTER_VIEW"
+          },
+          {
+            "name": "REMOVE_TABLE_PARTITION_SPECS"
+          },
+          {
+            "name": "REMOVE_TABLE_PROPERTIES"
+          },
+          {
+            "name": "REMOVE_TABLE_SNAPSHOTS"
+          },
+          {
+            "name": "REMOVE_TABLE_SNAPSHOT_REF"
+          },
+          {
+            "name": "REMOVE_TABLE_STATISTICS"
+          },
+          {
+            "name": "RENAME_TABLE"
+          },
+          {
+            "name": "RENAME_VIEW"
+          },
+          {
+            "name": "REPLACE_VIEW"
+          },
+          {
+            "name": "REPORT_READ_METRICS"
+          },
+          {
+            "name": "REPORT_WRITE_METRICS"
+          },
+          {
+            "name": "RESET_CREDENTIALS"
+          },
+          {
+            "name": "REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE"
+          },
+          {
+            "name": "REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE"
+          },
+          {
+            "name": "REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE"
+          },
+          {
+            "name": "REVOKE_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE"
+          },
+          {
+            "name": "REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE"
+          },
+          {
+            "name": "REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE"
+          },
+          {
+            "name": "ROTATE_CREDENTIALS"
+          },
+          {
+            "name": "SEND_NOTIFICATIONS"
+          },
+          {
+            "name": "SET_TABLE_CURRENT_SCHEMA"
+          },
+          {
+            "name": "SET_TABLE_DEFAULT_SORT_ORDER"
+          },
+          {
+            "name": "SET_TABLE_LOCATION"
+          },
+          {
+            "name": "SET_TABLE_PROPERTIES"
+          },
+          {
+            "name": "SET_TABLE_SNAPSHOT_REF"
+          },
+          {
+            "name": "SET_TABLE_STATISTICS"
+          },
+          {
+            "name": "TABLE_EXISTS"
+          },
+          {
+            "name": "UPDATE_CATALOG"
+          },
+          {
+            "name": "UPDATE_CATALOG_ROLE"
+          },
+          {
+            "name": "UPDATE_NAMESPACE_PROPERTIES"
+          },
+          {
+            "name": "UPDATE_POLICY"
+          },
+          {
+            "name": "UPDATE_PRINCIPAL"
+          },
+          {
+            "name": "UPDATE_PRINCIPAL_ROLE"
+          },
+          {
+            "name": "UPDATE_SEMANTIC_MODEL"
+          },
+          {
+            "name": "UPDATE_TABLE"
+          },
+          {
+            "name": "UPDATE_TABLE_FOR_STAGED_CREATE"
+          },
+          {
+            "name": "UPGRADE_TABLE_FORMAT_VERSION"
+          },
+          {
+            "name": "VIEW_EXISTS"
+          }
+        ],
+        "policies": [
+          {
+            "name": "is-alice",
+            "type": "user",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "users": "[\"alice\"]"
+            }
+          },
+          {
+            "name": "is-root",
+            "type": "user",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "users": "[\"root\"]"
+            }
+          },
+          {
+            "name": "is-bob",
+            "type": "user",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "users": "[\"bob\"]"
+            }
+          },
+          {
+            "name": "alice-may-do-anything",
+            "type": "scope",
+            "logic": "POSITIVE",
+            "decisionStrategy": "AFFIRMATIVE",
+            "config": {
+              "resources": "[\"POLARIS\", \"poc_catalog\", \"shared\", \"restricted\", \"events\", \"salaries\", \"alice\", \"bob\", \"data_engineer\", \"analyst\", \"engineer\", \"shared_reader\"]",
+              "scopes": "[\"ADD_CATALOG_GRANT_TO_CATALOG_ROLE\", \"ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE\", \"ADD_POLICY_GRANT_TO_CATALOG_ROLE\", \"ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE\", \"ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE\", \"ADD_TABLE_GRANT_TO_CATALOG_ROLE\", \"ADD_TABLE_PARTITION_SPEC\", \"ADD_TABLE_SCHEMA\", \"ADD_TABLE_SNAPSHOT\", \"ADD_TABLE_SORT_ORDER\", \"ADD_VIEW_GRANT_TO_CATALOG_ROLE\", \"ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE\", \"ASSIGN_PRINCIPAL_ROLE\", \"ASSIGN_TABLE_UUID\", \"ATTACH_POLICY_TO_CATALOG\", \"ATTACH_POLICY_TO_NAMESPACE\", \"ATTACH_POLICY_TO_TABLE\", \"COMMIT_TRANSACTION\", \"CREATE_CATALOG\", \"CREATE_CATALOG_ROLE\", \"CREATE_NAMESPACE\", \"CREATE_POLICY\", \"CREATE_PRINCIPAL\", \"CREATE_PRINCIPAL_ROLE\", \"CREATE_SEMANTIC_MODEL\", \"CREATE_TABLE_DIRECT\", \"CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION\", \"CREATE_TABLE_STAGED\", \"CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION\", \"CREATE_VIEW\", \"DELETE_CATALOG\", \"DELETE_CATALOG_ROLE\", \"DELETE_PRINCIPAL\", \"DELETE_PRINCIPAL_ROLE\", \"DETACH_POLICY_FROM_CATALOG\", \"DETACH_POLICY_FROM_NAMESPACE\", \"DETACH_POLICY_FROM_TABLE\", \"DROP_NAMESPACE\", \"DROP_POLICY\", \"DROP_SEMANTIC_MODEL\", \"DROP_TABLE_WITHOUT_PURGE\", \"DROP_TABLE_WITH_PURGE\", \"DROP_VIEW\", \"GET_APPLICABLE_POLICIES_ON_CATALOG\", \"GET_APPLICABLE_POLICIES_ON_NAMESPACE\", \"GET_APPLICABLE_POLICIES_ON_TABLE\", \"GET_CATALOG\", \"GET_CATALOG_ROLE\", \"GET_PRINCIPAL\", \"GET_PRINCIPAL_ROLE\", \"LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE\", \"LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE\", \"LIST_CATALOGS\", \"LIST_CATALOG_ROLES\", \"LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE\", \"LIST_GRANTS_FOR_CATALOG_ROLE\", \"LIST_NAMESPACES\", \"LIST_POLICY\", \"LIST_PRINCIPALS\", \"LIST_PRINCIPAL_ROLES\", \"LIST_PRINCIPAL_ROLES_ASSIGNED\", \"LIST_SEMANTIC_MODEL\", \"LIST_TABLES\", \"LIST_VIEWS\", \"LOAD_NAMESPACE_METADATA\", \"LOAD_POLICY\", \"LOAD_SEMANTIC_MODEL\", \"LOAD_TABLE\", \"LOAD_TABLE_WITH_READ_DELEGATION\", \"LOAD_TABLE_WITH_WRITE_DELEGATION\", \"LOAD_VIEW\", \"NAMESPACE_EXISTS\", \"REGISTER_TABLE\", \"REGISTER_TABLE_OVERWRITE\", \"REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION\", \"REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION\", \"REGISTER_TABLE_WITH_READ_DELEGATION\", \"REGISTER_TABLE_WITH_WRITE_DELEGATION\", \"REGISTER_VIEW\", \"REMOVE_TABLE_PARTITION_SPECS\", \"REMOVE_TABLE_PROPERTIES\", \"REMOVE_TABLE_SNAPSHOTS\", \"REMOVE_TABLE_SNAPSHOT_REF\", \"REMOVE_TABLE_STATISTICS\", \"RENAME_TABLE\", \"RENAME_VIEW\", \"REPLACE_VIEW\", \"REPORT_READ_METRICS\", \"REPORT_WRITE_METRICS\", \"RESET_CREDENTIALS\", \"REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE\", \"REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE\", \"REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE\", \"REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE\", \"REVOKE_PRINCIPAL_ROLE\", \"REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE\", \"REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE\", \"REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE\", \"REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE\", \"ROTATE_CREDENTIALS\", \"SEND_NOTIFICATIONS\", \"SET_TABLE_CURRENT_SCHEMA\", \"SET_TABLE_DEFAULT_SORT_ORDER\", \"SET_TABLE_LOCATION\", \"SET_TABLE_PROPERTIES\", \"SET_TABLE_SNAPSHOT_REF\", \"SET_TABLE_STATISTICS\", \"TABLE_EXISTS\", \"UPDATE_CATALOG\", \"UPDATE_CATALOG_ROLE\", \"UPDATE_NAMESPACE_PROPERTIES\", \"UPDATE_POLICY\", \"UPDATE_PRINCIPAL\", \"UPDATE_PRINCIPAL_ROLE\", \"UPDATE_SEMANTIC_MODEL\", \"UPDATE_TABLE\", \"UPDATE_TABLE_FOR_STAGED_CREATE\", \"UPGRADE_TABLE_FORMAT_VERSION\", \"VIEW_EXISTS\"]",
+              "applyPolicies": "[\"is-alice\"]"
+            }
+          },
+          {
+            "name": "root-may-bootstrap",
+            "type": "scope",
+            "logic": "POSITIVE",
+            "decisionStrategy": "AFFIRMATIVE",
+            "config": {
+              "resources": "[\"POLARIS\", \"poc_catalog\", \"shared\", \"restricted\", \"events\", \"salaries\", \"alice\", \"bob\", \"data_engineer\", \"analyst\", \"engineer\", \"shared_reader\"]",
+              "scopes": "[\"ADD_CATALOG_GRANT_TO_CATALOG_ROLE\", \"ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE\", \"ADD_POLICY_GRANT_TO_CATALOG_ROLE\", \"ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE\", \"ADD_SEMANTIC_MODEL_GRANT_TO_CATALOG_ROLE\", \"ADD_TABLE_GRANT_TO_CATALOG_ROLE\", \"ADD_TABLE_PARTITION_SPEC\", \"ADD_TABLE_SCHEMA\", \"ADD_TABLE_SNAPSHOT\", \"ADD_TABLE_SORT_ORDER\", \"ADD_VIEW_GRANT_TO_CATALOG_ROLE\", \"ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE\", \"ASSIGN_PRINCIPAL_ROLE\", \"ASSIGN_TABLE_UUID\", \"ATTACH_POLICY_TO_CATALOG\", \"ATTACH_POLICY_TO_NAMESPACE\", \"ATTACH_POLICY_TO_TABLE\", \"COMMIT_TRANSACTION\", \"CREATE_CATALOG\", \"CREATE_CATALOG_ROLE\", \"CREATE_NAMESPACE\", \"CREATE_POLICY\", \"CREATE_PRINCIPAL\", \"CREATE_PRINCIPAL_ROLE\", \"CREATE_SEMANTIC_MODEL\", \"CREATE_TABLE_DIRECT\", \"CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION\", \"CREATE_TABLE_STAGED\", \"CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION\", \"CREATE_VIEW\", \"DELETE_CATALOG\", \"DELETE_CATALOG_ROLE\", \"DELETE_PRINCIPAL\", \"DELETE_PRINCIPAL_ROLE\", \"DETACH_POLICY_FROM_CATALOG\", \"DETACH_POLICY_FROM_NAMESPACE\", \"DETACH_POLICY_FROM_TABLE\", \"DROP_NAMESPACE\", \"DROP_POLICY\", \"DROP_SEMANTIC_MODEL\", \"DROP_TABLE_WITHOUT_PURGE\", \"DROP_TABLE_WITH_PURGE\", \"DROP_VIEW\", \"GET_APPLICABLE_POLICIES_ON_CATALOG\", \"GET_APPLICABLE_POLICIES_ON_NAMESPACE\", \"GET_APPLICABLE_POLICIES_ON_TABLE\", \"GET_CATALOG\", \"GET_CATALOG_ROLE\", \"GET_PRINCIPAL\", \"GET_PRINCIPAL_ROLE\", \"LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE\", \"LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE\", \"LIST_CATALOGS\", \"LIST_CATALOG_ROLES\", \"LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE\", \"LIST_GRANTS_FOR_CATALOG_ROLE\", \"LIST_NAMESPACES\", \"LIST_POLICY\", \"LIST_PRINCIPALS\", \"LIST_PRINCIPAL_ROLES\", \"LIST_PRINCIPAL_ROLES_ASSIGNED\", \"LIST_SEMANTIC_MODEL\", \"LIST_TABLES\", \"LIST_VIEWS\", \"LOAD_NAMESPACE_METADATA\", \"LOAD_POLICY\", \"LOAD_SEMANTIC_MODEL\", \"LOAD_TABLE\", \"LOAD_TABLE_WITH_READ_DELEGATION\", \"LOAD_TABLE_WITH_WRITE_DELEGATION\", \"LOAD_VIEW\", \"NAMESPACE_EXISTS\", \"REGISTER_TABLE\", \"REGISTER_TABLE_OVERWRITE\", \"REGISTER_TABLE_OVERWRITE_WITH_READ_DELEGATION\", \"REGISTER_TABLE_OVERWRITE_WITH_WRITE_DELEGATION\", \"REGISTER_TABLE_WITH_READ_DELEGATION\", \"REGISTER_TABLE_WITH_WRITE_DELEGATION\", \"REGISTER_VIEW\", \"REMOVE_TABLE_PARTITION_SPECS\", \"REMOVE_TABLE_PROPERTIES\", \"REMOVE_TABLE_SNAPSHOTS\", \"REMOVE_TABLE_SNAPSHOT_REF\", \"REMOVE_TABLE_STATISTICS\", \"RENAME_TABLE\", \"RENAME_VIEW\", \"REPLACE_VIEW\", \"REPORT_READ_METRICS\", \"REPORT_WRITE_METRICS\", \"RESET_CREDENTIALS\", \"REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE\", \"REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE\", \"REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE\", \"REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE\", \"REVOKE_PRINCIPAL_ROLE\", \"REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE\", \"REVOKE_SEMANTIC_MODEL_GRANT_FROM_CATALOG_ROLE\", \"REVOKE_TABLE_GRANT_FROM_CATALOG_ROLE\", \"REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE\", \"ROTATE_CREDENTIALS\", \"SEND_NOTIFICATIONS\", \"SET_TABLE_CURRENT_SCHEMA\", \"SET_TABLE_DEFAULT_SORT_ORDER\", \"SET_TABLE_LOCATION\", \"SET_TABLE_PROPERTIES\", \"SET_TABLE_SNAPSHOT_REF\", \"SET_TABLE_STATISTICS\", \"TABLE_EXISTS\", \"UPDATE_CATALOG\", \"UPDATE_CATALOG_ROLE\", \"UPDATE_NAMESPACE_PROPERTIES\", \"UPDATE_POLICY\", \"UPDATE_PRINCIPAL\", \"UPDATE_PRINCIPAL_ROLE\", \"UPDATE_SEMANTIC_MODEL\", \"UPDATE_TABLE\", \"UPDATE_TABLE_FOR_STAGED_CREATE\", \"UPGRADE_TABLE_FORMAT_VERSION\", \"VIEW_EXISTS\"]",
+              "applyPolicies": "[\"is-root\"]"
+            }
+          },
+          {
+            "name": "bob-may-read-shared",
+            "type": "scope",
+            "logic": "POSITIVE",
+            "decisionStrategy": "AFFIRMATIVE",
+            "config": {
+              "resources": "[\"POLARIS\", \"poc_catalog\", \"shared\", \"events\"]",
+              "scopes": "[\"GET_APPLICABLE_POLICIES_ON_CATALOG\", \"GET_APPLICABLE_POLICIES_ON_NAMESPACE\", \"GET_APPLICABLE_POLICIES_ON_TABLE\", \"GET_CATALOG\", \"GET_CATALOG_ROLE\", \"GET_PRINCIPAL\", \"GET_PRINCIPAL_ROLE\", \"LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE\", \"LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE\", \"LIST_CATALOGS\", \"LIST_CATALOG_ROLES\", \"LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE\", \"LIST_GRANTS_FOR_CATALOG_ROLE\", \"LIST_NAMESPACES\", \"LIST_POLICY\", \"LIST_PRINCIPALS\", \"LIST_PRINCIPAL_ROLES\", \"LIST_PRINCIPAL_ROLES_ASSIGNED\", \"LIST_SEMANTIC_MODEL\", \"LIST_TABLES\", \"LIST_VIEWS\", \"LOAD_NAMESPACE_METADATA\", \"LOAD_POLICY\", \"LOAD_SEMANTIC_MODEL\", \"LOAD_TABLE\", \"LOAD_TABLE_WITH_READ_DELEGATION\", \"LOAD_TABLE_WITH_WRITE_DELEGATION\", \"LOAD_VIEW\", \"NAMESPACE_EXISTS\", \"TABLE_EXISTS\", \"VIEW_EXISTS\"]",
+              "applyPolicies": "[\"is-bob\"]"
+            }
+          }
+        ]
+      }
     }
   ]
 }
