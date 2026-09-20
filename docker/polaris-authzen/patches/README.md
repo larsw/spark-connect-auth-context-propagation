@@ -50,8 +50,18 @@ event into a permanent outage that only a restart clears.
 
 Both the evaluation calls and endpoint discovery go through the same retry.
 
-**If this is upstreamed**, it should carry a unit test. The natural place is
-`AuthzenPdpClientTest`, and it needs `StubAuthzenPdp` to grow a one-shot scripted response (it
-currently holds one sticky response per endpoint) so a `401` can be followed by a `200`. That was
-left out here because the PoC verifies the behaviour end to end instead: recreate the Keycloak
-container, then call Polaris, and watch it recover on its own.
+**Upstream.** This is pushed to the fork as
+[`fix/refresh-pdp-token-when-rejected`][branch], branched from the pinned commit, where it also
+carries the unit tests: `StubAuthzenPdp` grows a queue of one-shot responses so a `401` can be
+followed by a `200`, and `AuthzenPdpClientTest` asserts that the token is replaced once, that the
+two attempts carry *different* `Authorization` headers, that a permanently-refused credential
+fails closed after exactly one retry, and that a `403` is not retried at all. The first two fail
+against the old behaviour and pass with the fix; 42 tests in the module, no failures.
+
+This patch file carries only the production change, because that is all the image build needs.
+
+[branch]: https://github.com/larsw/polaris/tree/fix/refresh-pdp-token-when-rejected
+
+Independently of the unit tests, the PoC verifies the behaviour end to end: recreate the Keycloak
+container, then use the stack without restarting anything. `make test-container` passes, and the
+Polaris log shows one recovery cycle.
