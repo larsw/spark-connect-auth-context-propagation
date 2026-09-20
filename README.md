@@ -9,9 +9,10 @@ Spark holds **no object-storage credentials at all**. The only credentials on th
 the ones Polaris vends for whichever user made the request.
 
 > **This branch is not `main`.** It swaps Apache Polaris for a fork that delegates authorization
-> to an AuthZEN Policy Decision Point, and makes Keycloak that PDP. Start with
-> [docs/authzen-pdp.md](docs/authzen-pdp.md) — including the one thing it costs. Run
-> `make polaris-image` before `make up`.
+> to an AuthZEN Policy Decision Point, and makes Keycloak that PDP.
+> [AUTHZEN-SUMMARY.md](AUTHZEN-SUMMARY.md) is the short version, including the one thing it costs;
+> [docs/authzen-pdp.md](docs/authzen-pdp.md) is how it is wired. Run `make polaris-image` before
+> `make up`.
 
 **Status:** complete and verified. 29 end-to-end checks against the live stack, plus 83 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and
