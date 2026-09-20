@@ -384,7 +384,133 @@ services:
       retries: 40
       start_period: 30s
 
+  # ----------------------------------------------------------- OpenMetadata --
+  # All profiled: this is another four containers and roughly 4 GB, and the rest
+  # of the PoC does not need them. Bring them up with
+  #   make om-up      (docker compose --profile openmetadata up -d)
+  #
+  # Airflow is deliberately absent. The quickstart runs an Airflow scheduler as
+  # the "ingestion" service, but ingestion here is a one-shot `metadata ingest`,
+  # so PIPELINE_SERVICE_CLIENT_ENABLED is false and that container is not built.
+  # Neither MySQL nor Elasticsearch publishes a port: nothing outside the
+  # network talks to them, and it keeps them off the host's port space.
+  openmetadata-db:
+    profiles: ["openmetadata"]
+    image: docker.getcollate.io/openmetadata/db:2.0.2
+    command: "--sort_buffer_size=10M"
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+    volumes:
+      - openmetadata-db:/var/lib/mysql
+    mem_limit: 1g
+    healthcheck:
+      test: mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --silent --execute "use openmetadata_db"
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  openmetadata-search:
+    profiles: ["openmetadata"]
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      # Half the quickstart's 1 GB. The catalog being indexed here is two tables.
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      # OpenMetadata's migration creates ~40 indices back to back. On a host whose
+      # disk is already fairly full, the high watermark (90%) makes Elasticsearch
+      # refuse to allocate their shards, and at the flood stage (95%) it marks
+      # them read-only -- which looks like a hung migration, not a disk problem.
+      # None of it is meaningful for a single node holding two tables.
+      - cluster.routing.allocation.disk.threshold_enabled=false
+    volumes:
+      - openmetadata-search:/usr/share/elasticsearch/data
+    # 2 GB, not the 1 GB the 512 MB heap suggests: Lucene lives off-heap, and at
+    # 1 GB this container sat at 98% and the health check started timing out.
+    mem_limit: 2g
+    healthcheck:
+      test: "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -qE 'green|yellow' || exit 1"
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  # Schema migrations. The server refuses to start against an unmigrated
+  # database, so this has to complete first -- exactly as in the quickstart.
+  openmetadata-migrate:
+    profiles: ["openmetadata"]
+    image: docker.getcollate.io/openmetadata/server:2.0.2
+    command: "./bootstrap/openmetadata-ops.sh migrate"
+    depends_on:
+      openmetadata-db:
+        condition: service_healthy
+      openmetadata-search:
+        condition: service_healthy
+    environment: &openmetadata-env
+      DB_HOST: openmetadata-db
+      DB_PORT: "3306"
+      DB_USER: openmetadata_user
+      DB_USER_PASSWORD: openmetadata_password
+      DB_SCHEME: mysql
+      DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
+      DB_PARAMS: "allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
+      ELASTICSEARCH_HOST: openmetadata-search
+      ELASTICSEARCH_PORT: "9200"
+      ELASTICSEARCH_SCHEME: http
+      SEARCH_TYPE: elasticsearch
+      OPENMETADATA_HEAP_OPTS: "-Xmx1G -Xms1G"
+
+  openmetadata-server:
+    profiles: ["openmetadata"]
+    image: docker.getcollate.io/openmetadata/server:2.0.2
+    restart: unless-stopped
+    depends_on:
+      openmetadata-migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *openmetadata-env
+      # No Airflow in this stack, so the server must not health-check one.
+      PIPELINE_SERVICE_CLIENT_ENABLED: "false"
+      # Local basic auth. Deliberately NOT wired to the Keycloak realm: the
+      # realm models Polaris principals, and giving OpenMetadata its own login
+      # keeps the two authorization stories from being confused for each other.
+      # What does use Keycloak is the ingestion client -- see the runner below.
+      AUTHENTICATION_PROVIDER: basic
+      AUTHORIZER_ADMIN_PRINCIPALS: "[admin]"
+      AUTHORIZER_INGESTION_PRINCIPALS: "[ingestion-bot]"
+      AUTHORIZER_PRINCIPAL_DOMAIN: "open-metadata.org"
+    ports:
+      - "8585:8585"
+      - "8586:8586"
+    mem_limit: 2g
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8586/healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+
+  # One-shot crawler. Carries the revived Iceberg connector and reaches Polaris
+  # as the Keycloak client `openmetadata` using OAuth 2.0 client credentials.
+  #   make om-ingest
+  openmetadata-ingest:
+    profiles: ["openmetadata-tools"]
+    build:
+      context: .
+      dockerfile: docker/openmetadata/Dockerfile
+    image: spark-connect-propagation/openmetadata-ingest:0.1.0
+    depends_on:
+      openmetadata-server:
+        condition: service_healthy
+      polaris:
+        condition: service_healthy
+    environment:
+      OM_HOST: "http://openmetadata-server:8585"
+    mem_limit: 1g
+
 volumes:
   audit:
   minio-data:
   marquez-db:
+  openmetadata-db:
+  openmetadata-search:

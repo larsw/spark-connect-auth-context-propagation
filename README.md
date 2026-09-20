@@ -148,6 +148,8 @@ client/                 the PySpark client package
 client-jvm/             the same client for the JVM, in Java (Maven)
 client-rust/            the same client in Rust, on the spark-connect-rs crate (Cargo)
 demo/                   the walkthrough: demo.py, and java/ + rust/ for the same thing again
+openmetadata-connector/ the Iceberg catalogue crawler OpenMetadata deleted, revived (see docs/)
+docker/openmetadata/    the crawler image and the ingestion workflow it runs
 tests/                  the verification suite
 docs/                   screenshots the README points at
 ```
@@ -430,6 +432,7 @@ what the page tells you if you get it wrong.
 | MinIO console | http://minio:9001 |
 | Marquez (lineage UI) | [http://localhost:3001](http://localhost:3001) |
 | OpenLineage API (Marquez) | http://localhost:5000/api/v1/lineage — where the Spark listener posts; admin on :5001 |
+| OpenMetadata (catalogue) | [http://localhost:8585](http://localhost:8585) — `make om-up` first; `admin@open-metadata.org` / `admin` ([how](docs/openmetadata-iceberg.md)) |
 | Spark master | http://spark-master:8082 |
 | Spark driver UI | http://spark-connect:4040 |
 | Spark Connect | sc://spark-connect:15002 |

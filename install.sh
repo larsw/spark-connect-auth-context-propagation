@@ -204,4 +204,5 @@ printf '  %sReady.%s Next: %smake up%s\n\n' "$GRN" "$RST" "$BOLD" "$RST"
 printf '  %sOnce it is up:%s\n' "$DIM" "$RST"
 printf '    Polaris console   http://localhost:3000   %s(localhost, not the service name)%s\n' "$DIM" "$RST"
 printf '    Marquez lineage   http://localhost:3001\n'
-printf '    OpenLineage API   http://localhost:5000/api/v1/lineage\n\n'
+printf '    OpenLineage API   http://localhost:5000/api/v1/lineage\n'
+printf '    OpenMetadata      http://localhost:8585   %s(make om-up first; admin@open-metadata.org/admin)%s\n\n' "$DIM" "$RST"

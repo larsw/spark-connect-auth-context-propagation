@@ -1,0 +1,59 @@
+# OpenMetadata ingestion workflow for the Polaris Iceberg catalog.
+#
+# `customDatabase` rather than a built-in service type: OpenMetadata PR #26365
+# deleted the Iceberg service, and a custom connector is the migration path it
+# pointed existing Iceberg services at. `source.type` has to begin with "custom"
+# -- that prefix is what makes the workflow import sourcePythonClass instead of
+# looking for a built-in module.
+#
+# __JWT_TOKEN__ is replaced by ingest.sh with the ingestion-bot's token.
+source:
+  type: customDatabase
+  serviceName: polaris
+  serviceConnection:
+    config:
+      type: CustomDatabase
+      sourcePythonClass: polaris_iceberg.metadata.PolarisIcebergSource
+      connectionOptions:
+        # Polaris's Iceberg REST endpoint. `warehouse` is the Polaris catalog.
+        uri: http://polaris:8181/api/catalog
+        warehouse: poc_catalog
+
+        # OAuth 2.0 client credentials against Keycloak. Supplying a token URL
+        # is what selects PyIceberg's OAuth2 AuthManager -- without it PyIceberg
+        # falls back to posting the credential to Polaris's own /v1/oauth/tokens.
+        # The token Keycloak returns carries the principal_name claim Polaris
+        # resolves the principal by.
+        clientId: openmetadata
+        clientSecret: openmetadata-secret
+        oauth2ServerUri: http://keycloak:8080/realms/spark/protocol/openid-connect/token
+
+        # An Iceberg catalog has no level above the namespace, so OpenMetadata
+        # is given one to hang the schemas off.
+        databaseName: poc_catalog
+
+        # Reached only if PyIceberg has to open a manifest itself; Polaris
+        # normally returns the table metadata inline on load.
+        s3.endpoint: http://minio:9000
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      # Everything in the catalog: the point of the contrast with bob is that
+      # the crawler sees the shape of restricted.salaries while still being
+      # unable to read a row of it.
+      schemaFilterPattern:
+        includes:
+          - shared
+          - restricted
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://openmetadata-server:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "__JWT_TOKEN__"

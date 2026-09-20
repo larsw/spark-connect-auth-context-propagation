@@ -454,3 +454,110 @@ Spark 4.1 moved `QueryExecution` behind the `classic` module and changed that re
 listener compiled against 4.0 fails at link time — and a listener that throws does not merely stop
 collecting lineage, it stops the query engine. The newest release module is still `spark40`; 1.53.0
 works on 4.1.3 regardless, but pin it deliberately rather than by luck.
+
+## 16. Polaris's AuthZEN client caches its PDP token and never refreshes it
+
+Recreating the Keycloak container -- which a realm change requires, because `--import-realm` only
+imports into an empty database -- leaves Polaris unable to authorize anything at all:
+
+```
+WARN [org.apa.pol.ext.aut.aut.AuthzenPdpClient]
+     AuthZEN PDP at http://keycloak:8080/realms/spark/authzen/access/v1/evaluation
+     returned unexpected HTTP status 401, treating as deny: {"error":"HTTP 401 Unauthorized"}
+INFO [org.apa.pol.ser.exc.IcebergExceptionMapper]
+     Handling runtimeException AuthZEN PDP denied authorization
+```
+
+Polaris fetches its own `polaris-pdp` client-credentials token to call the PDP, and caches it. A
+fresh Keycloak generates new realm signing keys, so the cached token is rejected -- and the client
+treats *any* non-200 from the PDP as a deny rather than distinguishing "the PDP said no" from "I
+could not ask the PDP". Every request then fails closed, including the bootstrap's very first call,
+with a message that reads exactly like a policy decision.
+
+Two things follow, and they are worth separating:
+
+- **Operationally:** after touching the realm, restart Polaris too. `make bootstrap` alone will not
+  recover, and it will tell you the PDP denied authorization while the PDP, asked directly with
+  curl, returns `true` for the same subject and action. That contradiction is the tell.
+- **Design:** failing closed on an unreachable PDP is a defensible choice. Not refreshing the token
+  on a 401 is not, because it turns a recoverable credential expiry into a permanent outage. A PDP
+  client wants the same retry-once-on-401 that every other OAuth2 client has.
+
+Confusingly, this is *intermittent* when the token happens to expire on its own: an earlier attempt
+recovered by itself on the second run, because Polaris re-fetched the token when the cached one
+aged out, not because it noticed the 401.
+
+## 17. A registered resource no permission covers denies exactly like an unregistered one
+
+§10 of `docs/authzen-pdp.md` warns that an unregistered `resource.id` is indistinguishable from a
+deny. Adding the OpenMetadata crawler turned up the other half of that: registering the resource is
+not enough, because `alice-may-do-anything` and `root-may-bootstrap` name their resources in an
+explicit list that was written out when the realm was generated.
+
+Adding three resources and forgetting to extend those two lists produced:
+
+```
+ok   (201) principal service-account-openmetadata
+ok   (201) principal-role metadata_reader
+FAIL (403) service-account-openmetadata -> metadata_reader
+```
+
+Root could create the principal and the role, and then could not connect them -- because the
+*assignment* is authorized against the new resources, which root's blanket permission did not
+mention. `docker/keycloak/add-openmetadata-client.py` now re-writes both permissions to cover every
+registered resource, which is the only form that stays correct as resources are added.
+
+The general shape: in Keycloak's model "allowed on everything" is spelled as an enumeration, so it
+silently stops meaning everything the moment the world grows.
+
+## 18. The OpenMetadata Iceberg connector was deleted, and reviving it is a custom connector
+
+OpenMetadata [PR #26365](https://github.com/open-metadata/OpenMetadata/pull/26365) removed the
+built-in Iceberg service in 2.0: 36 files, across the Python ingestion, the JSON Schemas, the Java
+converters and the UI. Nothing of it survives in any 2.0.x release --
+`ingestion/src/metadata/ingestion/source/database/iceberg/metadata.py` is a 404 at 2.0.0, 2.0.1 and
+2.0.2.
+
+Restoring the *service type* would mean rebuilding the server and the UI, because the schema and
+the converters went too. The PR's own migration path is the answer instead: existing Iceberg
+services were migrated to `CustomDatabase`, and a custom connector is a Python class the ingestion
+framework imports by name. `openmetadata-connector/` is the original ingestion logic, unchanged in
+shape, with its configuration re-rooted onto `connectionOptions`.
+
+Three things about custom connectors that are not in the docs and cost time:
+
+1. **`get_connection` and `test_connection` are imported from the module that holds
+   `sourcePythonClass`**, not from a sibling `connection.py`. `import_connection_fn` splits the
+   class path and looks the function up in the module part (`metadata/utils/importer.py`). Ours are
+   defined in `connection.py` and re-exported from `metadata.py` for exactly this reason.
+2. **`test_connection_steps` cannot be used.** It fetches a `TestConnectionDefinition` entity from
+   the server keyed on the service type, and raises when there is none -- and there is none for
+   `customDatabase`. Worse, the step *names* come from that entity and are matched against the
+   supplied `test_fn` dict, so the Iceberg definition would have been needed, which the same PR
+   deleted. The connector calls the private `_test_connection_steps` underneath it and supplies its
+   own steps.
+3. **`ServiceSpec` is never consulted.** `Workflow.import_source_class` branches on the `custom`
+   prefix before the spec machinery is reached, so the `service_spec.py` the original connector
+   shipped would be dead code here. It is not included.
+
+### What the original had wrong
+
+Reviving code is a chance to read it properly, and three defects showed up:
+
+- **A `NameError` in the retry handler.** `_load_iceberg_table` binds the exception as `e` and then
+  logs `exc` in two of its four branches. Every exhausted retry and every non-network error raised
+  `NameError` *inside* the handler, which the outer `except Exception as exc` then reported as
+  `Could not load iceberg table properly: name 'exc' is not defined`. The real failure was never
+  logged, and a table that could not be loaded was silently skipped.
+- **Nested namespaces corrupted table names.** `get_table_name_as_str` drops only the *first*
+  element of the identifier tuple, so a table in namespace `a.b` was ingested as `b.tbl`. Taking
+  the last element is right for both cases.
+- **Two SigV4 property names changed under it.** PyIceberg renamed `rest.signing_region` and
+  `rest.signing_name` to `rest.signing-region` / `rest.signing-name`. The connector pinned
+  `pyiceberg==0.5.1` and would have passed keys nothing reads. There is now a test asserting our
+  constants equal PyIceberg's, so the next rename fails a test instead of a request.
+
+A fourth is not a defect so much as a version drift: the original passed `None` for unset
+properties, which 0.5.1 tolerated. PyIceberg now tests *membership* (`if CREDENTIAL in
+self.properties`), so a present-but-`None` key reads as configured and then fails on use. Unset
+keys are dropped rather than passed.

@@ -1,0 +1,47 @@
+This package is derived from the Iceberg connector that OpenMetadata removed in
+PR #26365 (https://github.com/open-metadata/OpenMetadata/pull/26365).
+
+Source: https://github.com/open-metadata/OpenMetadata
+Revision: 4b27ff317c8f9f7e79871c2452f1f3321557f14c
+          (the commit immediately before the removal merge, a06b7e7)
+Path:     ingestion/src/metadata/ingestion/source/database/iceberg/
+
+Licence
+-------
+The OpenMetadata repository root is Apache-2.0, but `ingestion/` -- the tree
+these files come from -- is under the **Collate Community License Agreement
+version 1.0**, which is not an open-source licence. It grants the right to use,
+modify, create derivative works of and distribute the software, but not for an
+"Excluded Purpose": offering a SaaS/PaaS/IaaS that competes with Collate
+products. Using it inside this proof of concept is within the grant.
+
+The licence text is at
+https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+and the original per-file headers have been kept intact on the files derived
+from it.
+
+Files taken verbatim
+--------------------
+  src/polaris_iceberg/helper.py   (one import rewritten to this package)
+  src/polaris_iceberg/models.py   (one import rewritten to this package)
+
+Files derived, with changes
+---------------------------
+  src/polaris_iceberg/metadata.py
+      from iceberg/metadata.py. Configuration now comes from a
+      CustomDatabaseConnection rather than the deleted IcebergConnection schema;
+      a NameError in the table-load retry handler is fixed; table names are
+      taken from the last element of the identifier so nested namespaces do not
+      leak into them.
+
+  src/polaris_iceberg/catalog.py
+      from iceberg/catalog/rest.py. REST only -- the Glue, Hive and DynamoDB
+      catalogs and the factory that chose between them are dropped.
+
+  src/polaris_iceberg/connection.py
+      from iceberg/connection.py. The server-side TestConnectionDefinition
+      lookup is bypassed, because none is registered for customDatabase.
+
+Files written for this package
+------------------------------
+  src/polaris_iceberg/config.py, __init__.py

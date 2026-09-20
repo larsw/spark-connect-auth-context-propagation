@@ -17,7 +17,7 @@ JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
 
 .DEFAULT_GOAL := help
-.PHONY: help install jar client-jar client-rust polaris-image build up bootstrap demo demo-jvm demo-rust test-unit test test-jvm test-jvm-it test-rust test-rust-it test-container logs cid ps down clean
+.PHONY: help install jar client-jar client-rust polaris-image build up bootstrap demo demo-jvm demo-rust test-unit test test-jvm test-jvm-it test-rust test-rust-it test-connector test-container om-up om-ingest om-down logs cid ps down clean
 
 help: ## Show this help
 	@echo "Spark Connect propagation PoC"
@@ -96,6 +96,30 @@ test-rust: ## Rust client unit tests -- no stack, no docker, no network
 
 test-rust-it: ## Rust client against the live stack (needs make up and ./install.sh)
 	@cargo test --manifest-path client-rust/Cargo.toml -- --ignored
+
+test-connector: ## OpenMetadata Iceberg connector unit tests -- no stack, no docker, no network
+	@cd openmetadata-connector && uv run pytest tests -q
+
+om-up: ## Start OpenMetadata (profiled; ~4 GB, not part of `make up`)
+	@$(COMPOSE) --profile openmetadata up -d
+	@echo "waiting for openmetadata-server to become healthy (first run migrates the DB) ..."
+	@for i in $$(seq 1 150); do \
+	  status=$$($(COMPOSE) ps --format json openmetadata-server 2>/dev/null | python3 -c 'import sys,json; print(json.loads(sys.stdin.read() or "{}").get("Health",""))' 2>/dev/null); \
+	  if [ "$$status" = "healthy" ]; then echo; echo "  OpenMetadata   http://localhost:8585   (admin@open-metadata.org / admin)"; exit 0; fi; \
+	  sleep 2; \
+	done; \
+	echo "openmetadata-server did not become healthy; try '$(COMPOSE) logs openmetadata-server'" >&2; exit 1
+
+# Both profiles: the crawler is on `openmetadata-tools` so `make om-up` does not
+# run it, but it depends_on openmetadata-server, and a service whose dependency
+# is outside the active profiles makes the whole project invalid.
+om-ingest: ## Crawl the Polaris catalog into OpenMetadata (needs make om-up)
+	@$(COMPOSE) --profile openmetadata --profile openmetadata-tools build openmetadata-ingest
+	@$(COMPOSE) --profile openmetadata --profile openmetadata-tools run --rm openmetadata-ingest
+
+om-down: ## Stop OpenMetadata only, leaving the rest of the stack running
+	@$(COMPOSE) --profile openmetadata --profile openmetadata-tools stop \
+	  openmetadata-server openmetadata-search openmetadata-db
 
 test-container: ## Full suite inside the compose network (no host setup needed)
 	@$(COMPOSE) --profile tools build client
