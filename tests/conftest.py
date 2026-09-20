@@ -196,6 +196,25 @@ def load_table_credentials(user: str, namespace: str, table: str) -> dict:
         return json.loads(response.read()).get("config", {})
 
 
+def session_policy_of(credentials: dict) -> dict:
+    """The session policy MinIO embedded in a vended STS token.
+
+    What a vended credential may actually do is not in the Polaris response; it is in the policy
+    MinIO stamped into the token when it minted it. Reading it back is the only way to check the
+    scope rather than merely the existence of a credential.
+    """
+    import base64, json
+
+    token = credentials.get("s3.session-token", "")
+    payload = token.split(".")[1]
+    payload += "=" * (-len(payload) % 4)
+    claims = json.loads(base64.urlsafe_b64decode(payload))
+    policy = claims.get("sessionPolicy") or claims.get("policy") or {}
+    if isinstance(policy, str):
+        policy = json.loads(base64.b64decode(policy + "=" * (-len(policy) % 4)))
+    return policy
+
+
 AUDIT_FILE = "/audit/audit.jsonl"
 
 

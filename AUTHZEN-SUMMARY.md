@@ -44,46 +44,48 @@ plus Quarkus, about two minutes on a warm cache.
    user for a policy to name, `make bootstrap` dies on its first call with
    `AuthZEN PDP denied authorization`.
 
-## What it costs: the vended credential stops being per-user
+## Per-user credentials: two settings that fail silently
 
-One test is left **failing on purpose**, as `xfail(strict=True)` so it will shout if the fork
-fixes it: `test_polaris_vends_distinct_temporary_credentials_per_user`.
+Credentials are per-user and correctly scoped — alice can write the table, bob can only read it —
+but getting there took two fixes, and **an earlier draft of this branch shipped with both wrong and
+blamed the fork for it. That was incorrect.** Both are configuration.
 
-Loading the same table as each user returns byte-identical credentials:
+**1. `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` was off.** Polaris caches vended credentials
+on a key that includes the STS session name, and that name is `polaris` for everyone by default. Two
+principals with matching location grants therefore share a cache entry and are handed a
+byte-identical access key and session token. Turning it on makes the name `polaris-alice` /
+`polaris-bob`; Polaris's own docs describe the loss of cache reuse as the cost, which is exactly the
+property wanted here.
+
+**2. The Keycloak read policy granted `LOAD_TABLE_WITH_WRITE_DELEGATION`.** On a delegated load
+Polaris asks the PDP for *write* delegation first and only falls back to read when that is refused,
+so the credential's scope is decided by the policy. The realm generator picked bob's scopes with a
+name heuristic — anything starting `LIST_`, `LOAD_` or `GET_` — and that prefix matches
+`LOAD_TABLE_WITH_WRITE_DELEGATION`. bob held a write credential for a table he may only read, and
+every test still passed, because the only test looking at credentials compared tokens for
+*inequality*.
+
+The result, read out of the session policy MinIO embeds in each token:
 
 ```
-alice: access-key=2JBZC2XRQJEN... token-len=1183
-bob  : access-key=2JBZC2XRQJEN... token-len=1183
-same access key:    True
-same session token: True
+alice: access-key=F0OEK0HW91LQ...   s3:PutObject, s3:DeleteObject, s3:GetObject, ...
+bob  : access-key=CZBNUKU1JKZ5...   s3:GetObject, s3:GetObjectVersion, s3:ListBucket
+same access key: False    same session token: False
 ```
 
-and the session policy embedded in both grants **write**:
+`test_the_vended_credential_is_scoped_to_what_the_user_may_do` now asserts the scope rather than
+just the distinctness, which is what would have caught the second bug.
 
-```json
-{"Effect": "Allow",
- "Action": ["s3:DeleteObject", "s3:PutObject"],
- "Resource": ["arn:aws:s3:::warehouse/poc/shared/events/*"]}
-```
-
-bob is a read-only analyst. On `main` he receives his own token, scoped to reads.
-
-The catalog decision is still correct — bob is refused `restricted.salaries`, which is what the
-demo shows. It is the **data plane** that stops differentiating, and that follows from what a PDP
-is: it answers *allow or deny*, while Polaris previously shaped the vended credential from the
-principal's resolved privilege **set**, which an external PDP never returns. The identical token
-suggests the credential is cached per table rather than per principal, but that is inference from
-the outside; the behaviour difference is the measured part.
-
-This matters for this repository in particular, because its headline claim is that the only
-credentials on the data path are the ones Polaris vended *for whichever user made the request*. On
-this branch that is still true of the request, and no longer true of the user.
+The general lesson, which is not specific to this fork: moving the authorization decision to an
+external PDP also moves the decision about how much the vended credential may do. A policy that is
+merely *generous* about read-ish operation names silently becomes a policy that hands out write
+credentials.
 
 ## Status
 
 | | |
 |---|---|
-| Host suite | 43 passed, 1 skipped, 1 xfailed |
+| Host suite | 45 passed, 1 skipped |
 | `make bootstrap` | works, once Keycloak has a `root` user |
 | `make demo` | unchanged output; refusal now from the PDP |
 | Polaris | 1.8.0-SNAPSHOT (fork of `main`), against 1.7.0 on `main` |
@@ -95,6 +97,6 @@ this branch that is still true of the request, and no longer true of the user.
 - The PDP can be queried without Polaris in the picture, which is the quickest way to tell a
   policy problem from a Polaris problem. The curl recipe is at the end of
   [docs/authzen-pdp.md](docs/authzen-pdp.md).
-- The open question worth answering before merging: whether per-principal credential scoping can
-  be restored — either by the PDP returning more than a boolean, or by Polaris keeping its own
-  privilege resolution for vending while delegating the access decision.
+- The two credential settings above are the sharp edges. Both fail quietly: the first produces
+  identical credentials, the second produces over-privileged ones, and neither shows up as an
+  error anywhere.

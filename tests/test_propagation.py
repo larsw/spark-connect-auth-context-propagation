@@ -269,18 +269,6 @@ def test_concurrent_operations_in_one_session_keep_their_own_correlation_id(alic
 
 # ------------------------------------------------------- vended credentials --
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "AuthZEN branch: with polaris.authorization.type=authzen, Polaris vends alice and bob "
-        "the SAME credential for the same table -- identical access key, identical session "
-        "token, and a session policy granting s3:PutObject/s3:DeleteObject to both. The catalog "
-        "decision still differentiates them (bob is refused restricted.salaries by the PDP), but "
-        "the data-plane credential no longer does. An external PDP answers allow/deny; it does "
-        "not hand back the privilege set Polaris previously used to shape the vended credential. "
-        "Left failing on purpose: see docs/authzen-pdp.md. Remove this marker if the fork fixes it."
-    ),
-)
 def test_polaris_vends_distinct_temporary_credentials_per_user(alice, bob):
     """D7: the data plane is identity-aware, not just the catalog.
 
@@ -300,6 +288,46 @@ def test_polaris_vends_distinct_temporary_credentials_per_user(alice, bob):
 
     assert for_alice["s3.session-token"] != for_bob.get("s3.session-token"), (
         "alice and bob received the same session token; credentials are not per-identity"
+    )
+    assert for_alice["s3.access-key-id"] != for_bob.get("s3.access-key-id"), (
+        "alice and bob received the same access key; credentials are not per-identity"
+    )
+
+
+def test_the_vended_credential_is_scoped_to_what_the_user_may_do(alice, bob):
+    """Distinct credentials are not enough; they have to be distinctly *scoped*.
+
+    MinIO embeds the session policy in the STS token, so what a credential may actually do is
+    readable from the token itself. alice writes this table, bob only reads it, and the two
+    policies have to say so.
+
+    This exists because a credential can be per-user and still wrong: on a delegated load Polaris
+    asks for WRITE delegation first and only falls back to read when that is refused, so an
+    authorization policy that grants a reader `LOAD_TABLE_WITH_WRITE_DELEGATION` hands them
+    s3:PutObject while every other assertion here still passes.
+    """
+    from conftest import load_table_credentials, session_policy_of
+
+    alice_policy = session_policy_of(load_table_credentials("alice", "shared", "events"))
+    bob_policy = session_policy_of(load_table_credentials("bob", "shared", "events"))
+
+    def actions(policy):
+        return {
+            action
+            for statement in policy.get("Statement", [])
+            if statement.get("Effect") == "Allow"
+            for action in statement.get("Action", [])
+        }
+
+    alice_actions, bob_actions = actions(alice_policy), actions(bob_policy)
+
+    assert "s3:PutObject" in alice_actions, f"alice should be able to write: {sorted(alice_actions)}"
+    assert "s3:GetObject" in bob_actions, f"bob should be able to read: {sorted(bob_actions)}"
+    assert "s3:PutObject" not in bob_actions, (
+        f"bob is read-only but holds a write credential: {sorted(bob_actions)}"
+    )
+    assert "s3:DeleteObject" not in bob_actions, (
+        f"bob is read-only but may delete objects: {sorted(bob_actions)}"
     )
 
 

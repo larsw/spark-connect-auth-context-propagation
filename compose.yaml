@@ -135,6 +135,14 @@ services:
 
       polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"S3\"]"
 
+      # Put the principal in the STS session name, so it becomes `polaris-alice` / `polaris-bob`
+      # rather than a shared `polaris`. Polaris caches vended credentials on a key that includes
+      # the session name, so without this alice and bob share one cache entry and are handed the
+      # SAME access key and session token. Polaris's own docs call the cost out: "degradation in
+      # temporary credential caching as catalog will no longer be able to reuse credentials for
+      # multiple principals" -- which is exactly the property we want.
+      polaris.features."INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL": "true"
+
       # The console is a browser app calling Polaris from its own origin, so CORS has to be
       # opened for it. Quarkus defaults this to false.
       quarkus.http.cors.enabled: "true"

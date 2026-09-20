@@ -6,7 +6,9 @@ Policy Decision Point speaking the [OpenID AuthZEN Authorization API 1.0][authze
 same instance that already issues the tokens — becomes that PDP, via its experimental `authzen`
 feature.
 
-It is a branch, not a merge: the point is to find out what changes, and one thing does.
+It is a branch, not a merge: the point is to find out what changes. The short answer is that the
+authorization decision moves, and two settings have to move with it or the vended credentials stop
+being per-user.
 
 [fork]: https://github.com/larsw/polaris/tree/feat/authzen-pdp-support
 [authzen]: https://openid.net/specs/authorization-api-1_0.html
@@ -60,7 +62,7 @@ bootstrap touches is registered.
 | Policy | Subject | Resources | Scopes |
 |---|---|---|---|
 | `alice-may-do-anything` | alice | all | all 119 |
-| `bob-may-read-shared` | bob | `POLARIS`, `poc_catalog`, `shared`, `events` | the 31 read-ish ones |
+| `bob-may-read-shared` | bob | `POLARIS`, `poc_catalog`, `shared`, `events` | the 30 read-only ones (no `*WRITE*`) |
 | `root-may-bootstrap` | root | all | all 119 |
 
 The resource server is set to `AFFIRMATIVE`. Keycloak defaults it to `UNANIMOUS`, which requires
@@ -81,50 +83,72 @@ one role, they contradict each other and everyone is denied.
 That sentence used to come from Polaris's own grant evaluation. It now comes from a policy
 decision made in Keycloak.
 
-## What it costs: the vended credential stops being per-user
+## Per-user credentials: two settings, both easy to get wrong
 
-**One test fails, and it is left failing on purpose** (`xfail(strict=True)`, so it will shout if
-the fork fixes it): `test_polaris_vends_distinct_temporary_credentials_per_user`.
+Getting to "alice and bob hold different, differently-scoped credentials" took two fixes. Neither
+is a defect in the fork — both are configuration — but both fail *silently*, and the first draft of
+this branch shipped with both wrong and concluded the fork was at fault. It was not.
 
-Ask Polaris to load `shared.events` with `X-Iceberg-Access-Delegation: vended-credentials` as each
-user, and compare:
+**1. Polaris caches vended credentials, and the cache key includes the STS session name.**
 
-```
-alice: access-key=2JBZC2XRQJEN... token-len=1183
-bob  : access-key=2JBZC2XRQJEN... token-len=1183
-same access key:    True
-same session token: True
-```
+`AwsStorageCredentialCacheKey` is keyed on the realm, the storage config, the allowed read/list/
+write locations, the session name and the session tags. The session name is `polaris` for
+*everyone* unless you say otherwise, so two principals whose location grants match collapse onto
+one cache entry and are handed a byte-identical access key and session token.
 
-Byte-identical. And the session policy embedded in both grants **write**:
-
-```json
-{"Effect": "Allow",
- "Action": ["s3:DeleteObject", "s3:PutObject"],
- "Resource": ["arn:aws:s3:::warehouse/poc/shared/events/*"]}
+```yaml
+polaris.features."INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL": "true"
 ```
 
-bob is a read-only analyst. On `main` he receives his own token, scoped to reads. Here he gets
-alice's, and it can write.
+makes it `polaris-alice` / `polaris-bob`. Polaris's own documentation frames this as a cost —
+"degradation in temporary credential caching as catalog will no longer be able to reuse
+credentials for multiple principals" — which is precisely the property wanted here.
 
-The catalog decision is still right — bob is refused `restricted.salaries`, which is what the demo
-shows. It is the **data plane** that stops differentiating. That follows from what an external PDP
-is: it answers *allow or deny*, and Polaris previously shaped the vended credential from the
-principal's resolved privilege *set*, which the PDP never returns. The identical token suggests the
-vended credential is being cached per table rather than per principal, but that is inference from
-the outside; the difference in behaviour is the measured part.
+**2. A delegated load asks for WRITE first, so a too-generous read policy grants writes.**
 
-This matters for this PoC specifically, because its headline claim is that the only credentials on
-the data path are the ones Polaris vended *for whichever user made the request*. On this branch
-that is still true of the request, and no longer true of the user.
+`IcebergCatalogHandler` decides the credential's scope like this:
+
+```java
+Set<PolarisStorageActions> actionsRequested = new HashSet<>(Set.of(READ, LIST));
+try {
+  authorize(... LOAD_TABLE_WITH_WRITE_DELEGATION ...);
+  actionsRequested.add(WRITE);
+} catch (ForbiddenException e) {
+  authorize(... LOAD_TABLE_WITH_READ_DELEGATION ...);
+}
+```
+
+Write delegation is requested *first*, and read is only a fallback for when the PDP refuses. So
+the credential's scope is decided by the policy, and a reader who is granted
+`LOAD_TABLE_WITH_WRITE_DELEGATION` receives `s3:PutObject`.
+
+The realm generator originally picked bob's scopes with a name heuristic — anything starting
+`LIST_`, `LOAD_` or `GET_` — and `LOAD_TABLE_WITH_WRITE_DELEGATION` starts with `LOAD_`. bob was a
+read-only analyst holding a write credential, and every test still passed. The generator now
+excludes any operation containing `WRITE` from the read set.
+
+**The result**, read back out of the session policy MinIO embeds in each token:
+
+```
+alice: access-key=F0OEK0HW91LQ... token-len=1183
+bob  : access-key=CZBNUKU1JKZ5... token-len=970
+same access key: False    same session token: False
+
+alice: s3:DeleteObject, s3:PutObject, s3:ListBucket, s3:GetObject, ...
+bob  : s3:ListBucket, s3:GetBucketLocation, s3:GetObject, s3:GetObjectVersion
+```
+
+`test_the_vended_credential_is_scoped_to_what_the_user_may_do` now asserts exactly that, because
+the previous test — which only compared tokens for inequality — would have passed throughout the
+second bug.
 
 ## Status
 
 | | |
 |---|---|
-| Host suite | 43 passed, 1 skipped, 1 xfailed |
+| Host suite | 45 passed, 1 skipped |
 | `make bootstrap` | works, once Keycloak has a `root` user |
-| `make demo` | unchanged output, refusal now from the PDP |
+| `make demo` | unchanged output; refusal now from the PDP |
 | Polaris version | 1.8.0-SNAPSHOT (fork of `main`), against 1.7.0 on `main` |
 
 The PDP itself can be exercised without Polaris in the picture, which is the quickest way to tell a
