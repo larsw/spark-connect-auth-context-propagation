@@ -20,7 +20,19 @@ make om-ingest    # build the crawler image and crawl Polaris once
 ```
 
 Then <http://localhost:8585>, logging in as `admin@open-metadata.org` / `admin`. The catalogue is
-under **Settings → Services → Databases → polaris**.
+under **Settings → Services → Databases → polaris**:
+
+```
+  service   polaris  (CustomDatabase)
+  database  polaris.poc_catalog
+  schemas   polaris.poc_catalog.shared, polaris.poc_catalog.restricted
+  tables    shared.events        id: LONG,       kind: STRING
+            restricted.salaries  person: STRING, amount: LONG
+```
+
+The first `make om-up` migrates the database through every schema version since 1.5 and seeds the
+entity types, so allow several minutes before the server is healthy. `make om-ingest` itself takes
+about five seconds.
 
 `make om-down` stops just those three containers and leaves the rest of the stack running.
 
@@ -133,6 +145,13 @@ auth manager from our configuration, so a renamed key fails a test rather than a
   the crawler's connection to Polaris, which is the part this PoC is about.
 - **After changing the realm, restart Polaris as well as Keycloak.** Polaris caches its PDP token
   and treats the resulting 401 as a deny — §16 of [FINDINGS.md](../FINDINGS.md).
+- **Elasticsearch gets 2 GB for a 512 MB heap**, because Lucene is off-heap. At 1 GB it sat at 98%
+  and the migration took more than fifteen minutes without finishing; at 2 GB it takes 60 seconds.
+  Its disk watermarks are disabled too: this host's disk is 94% full, and above 90% Elasticsearch
+  stops allocating shards, which looks like a hung migration rather than a full disk.
+- **The ingestion-bot's JWT comes from `/api/v1/users/auth-mechanism/{id}`.** The more obvious
+  `/api/v1/users/{id}?fields=authenticationMechanism` is accepted on 2.0.2 and answers with `null`
+  for every field. Set `OM_JWT_TOKEN` to skip the lookup entirely.
 
 ## Licence
 

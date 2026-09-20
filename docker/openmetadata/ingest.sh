@@ -54,13 +54,16 @@ if [ -z "${OM_JWT_TOKEN:-}" ]; then
     exit 1
   fi
 
+  # The dedicated endpoint, not `/users/{id}?fields=authenticationMechanism`:
+  # that query is accepted but answers with nulls for every field on 2.0.2.
   OM_JWT_TOKEN="$(curl -sS \
-    "${OM_HOST}/api/v1/users/${bot_user_id}?fields=authenticationMechanism" \
+    "${OM_HOST}/api/v1/users/auth-mechanism/${bot_user_id}" \
     -H "Authorization: Bearer ${admin_token}" \
-    | jq -r '.authenticationMechanism.config.JWTToken // empty')"
+    | jq -r '.config.JWTToken // empty')"
 
   if [ -z "${OM_JWT_TOKEN}" ]; then
     echo "FATAL: could not read the ingestion-bot's JWT" >&2
+    echo "       Set OM_JWT_TOKEN from Settings -> Bots -> ingestion-bot." >&2
     exit 1
   fi
   log "got a token (${#OM_JWT_TOKEN} chars)"

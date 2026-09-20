@@ -104,6 +104,14 @@ those lists left root able to create the principal and the role but not to conne
 permission covers denies exactly like an unregistered one. The generator now rewrites both
 permissions to cover every registered resource.
 
+**3. Elasticsearch needs twice the memory its heap suggests.** At `mem_limit: 1g` around a 512 MB
+heap, the container sat at 98% and the migration crawled — one index per 30 seconds, still
+unfinished after fifteen minutes, with the health check timing out. Lucene lives off-heap. At 2 GB
+the same migration finished in **60 seconds**. On a host whose disk is also fairly full,
+`cluster.routing.allocation.disk.threshold_enabled=false` is needed as well, or Elasticsearch
+refuses to allocate shards above 90% and marks indices read-only above 95% — which presents as a
+hung migration rather than a disk problem.
+
 ## Deployment choices
 
 - **No Airflow.** The quickstart runs an Airflow scheduler as its "ingestion" service; this sets
@@ -133,8 +141,22 @@ exact upstream commit, is in `openmetadata-connector/NOTICE`.
 | Keycloak client credentials | token carries the right `principal_name`, `principal_roles`, `aud` |
 | AuthZEN decisions | read everywhere, write nowhere; bob unchanged |
 | `make bootstrap` | clean, including the new principal, role, grants and bindings |
+| `make om-ingest` | **Workflow Success 100%**, 8 records, 0 errors, 4.4s |
 | Polaris | 1.8.0-SNAPSHOT (AuthZEN fork), unchanged from the parent branch |
 | OpenMetadata | 2.0.2, mysql + elasticsearch + server, no Airflow |
+
+What lands in the catalogue:
+
+```
+  service   polaris  (CustomDatabase)
+  database  polaris.poc_catalog
+  schemas   polaris.poc_catalog.shared, polaris.poc_catalog.restricted
+  tables    shared.events        id: LONG,     kind: STRING
+            restricted.salaries  person: STRING, amount: LONG
+```
+
+Both connection steps — `GetNamespaces` and `GetTables` — pass, which is the part that had to
+route around the missing `TestConnectionDefinition`.
 
 ## If you pick this up again
 
