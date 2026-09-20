@@ -122,6 +122,17 @@ services:
       quarkus.oidc.client-id: "polaris"
       quarkus.oidc.roles.role-claim-path: "principal_roles"
 
+      # Re-fetch the JWKS quickly when a token arrives signed by a key Polaris has not
+      # seen. Quarkus waits 10 minutes between forced re-fetches by default, which is a
+      # sensible rate limit against a hostile `kid` but means that recreating the Keycloak
+      # container -- which regenerates the realm's signing keys, and is how a realm change
+      # is applied here -- leaves every user token failing authentication for ten minutes
+      # with `JWK with kid '...' is not available`. Polaris then falls back to token
+      # introspection, which is not configured with a client secret and fails too, so the
+      # visible symptom is a bare 401. This is the authentication half of the same class of
+      # problem as the PDP token cache; see docker/polaris-authzen/patches/ for that one.
+      quarkus.oidc.token.forced-jwk-refresh-interval: "5S"
+
       # Resolve the Polaris principal BY NAME. Deliberately no id-claim-path: principals
       # must already exist in Polaris (DefaultAuthenticator does not support federated
       # principals), and name resolution avoids having to round-trip Polaris's numeric

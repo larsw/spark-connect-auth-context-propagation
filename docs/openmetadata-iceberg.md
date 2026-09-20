@@ -143,8 +143,10 @@ auth manager from our configuration, so a renamed key fails a test rather than a
   The realm models Polaris principals; giving OpenMetadata its own login keeps the two
   authorization stories from being mistaken for one another. The part that *does* use Keycloak is
   the crawler's connection to Polaris, which is the part this PoC is about.
-- **After changing the realm, restart Polaris as well as Keycloak.** Polaris caches its PDP token
-  and treats the resulting 401 as a deny — §16 of [FINDINGS.md](../FINDINGS.md).
+- **Changing the realm no longer requires restarting Polaris.** It used to: Polaris cached its PDP
+  token and treated the resulting 401 as a deny, so recreating Keycloak killed authorization until
+  Polaris was bounced. Fixed by a patch carried on top of the pinned fork commit —
+  `docker/polaris-authzen/patches/`, and §16 of [FINDINGS.md](../FINDINGS.md).
 - **Elasticsearch gets 2 GB for a 512 MB heap**, because Lucene is off-heap. At 1 GB it sat at 98%
   and the migration took more than fifteen minutes without finishing; at 2 GB it takes 60 seconds.
   Its disk watermarks are disabled too: this host's disk is 94% full, and above 90% Elasticsearch

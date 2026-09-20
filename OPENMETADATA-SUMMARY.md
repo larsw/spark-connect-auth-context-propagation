@@ -81,11 +81,11 @@ restated, so the two cannot drift — and the generator refuses to run if that p
 WRITE scope. That is the `LOAD_TABLE_WITH_WRITE_DELEGATION`-starts-with-`LOAD_` bug from the
 AuthZEN branch wired shut.
 
-## Two things that cost real time
+## Two things that cost real time — both now fixed
 
 **1. Polaris caches its PDP token and never refreshes it.** Changing the realm means recreating the
 Keycloak container, which regenerates the realm signing keys. Polaris's cached `polaris-pdp` token
-is then rejected, and the AuthZEN client treats *any* non-200 as a deny:
+is then rejected, and the AuthZEN client treated *any* non-200 as a deny:
 
 ```
 WARN AuthzenPdpClient: AuthZEN PDP ... returned unexpected HTTP status 401, treating as deny
@@ -94,15 +94,27 @@ INFO IcebergExceptionMapper: Handling runtimeException AuthZEN PDP denied author
 
 Every request fails closed with a message indistinguishable from a real policy decision, while the
 PDP asked directly with curl answers `true` for the same subject and action. That contradiction is
-the tell. **After touching the realm, restart Polaris as well.** Failing closed on an unreachable
-PDP is defensible; not retrying once on a 401 turns a credential expiry into an outage.
+the tell. Failing closed on an unreachable PDP is defensible; never recovering is not, because it
+turns an ordinary credential lifecycle event into an outage that only a restart clears.
 
-**2. In Keycloak, "allowed on everything" is an enumeration.** `alice-may-do-anything` and
-`root-may-bootstrap` list their resources explicitly. Adding three resources without extending
+**Fixed** in `docker/polaris-authzen/patches/0001-…`, applied to the pinned fork commit at image
+build time: `BearerTokenProvider` gains an `invalidate()`, `ClientCredentialsTokenProvider` fetches
+a replacement (single-flighted, and rate-limited so a genuinely wrong credential cannot flood the
+token endpoint), and `AuthzenPdpClient` treats `401` as "the credential was refused" rather than as
+a decision — replacing the token and asking again exactly once. Restarting Polaris after a realm
+change is no longer necessary.
+
+**2. In Keycloak, "allowed on everything" was an enumeration.** `alice-may-do-anything` and
+`root-may-bootstrap` listed their resources explicitly. Adding three resources without extending
 those lists left root able to create the principal and the role but not to connect them —
 `FAIL (403) service-account-openmetadata -> metadata_reader`. A registered resource that no
-permission covers denies exactly like an unregistered one. The generator now rewrites both
-permissions to cover every registered resource.
+permission covers denies exactly like an unregistered one.
+
+**Fixed** by dropping `resources` from the three permissions that are meant to be unrestricted: a
+Keycloak scope permission with no resource list applies to its scopes on whatever resource it is
+asked about. Verified on a throwaway realm with a `canary_resource` that no permission names — root
+and alice are permitted on it, while bob and the crawler are unchanged. bob keeps his enumeration,
+because for him it *is* the policy.
 
 **3. Elasticsearch needs twice the memory its heap suggests.** At `mem_limit: 1g` around a 512 MB
 heap, the container sat at 98% and the migration crawled — one index per 30 seconds, still

@@ -43,12 +43,27 @@ CATALOG_ROLE = "catalog_reader"
 PDP_CLIENT = "polaris-pdp"
 READ_POLICY_TO_COPY = "bob-may-read-shared"
 
-# These two are meant to cover everything, and their resource list was written
-# out in full when the realm was generated. Adding a resource without adding it
-# here leaves root unable to touch it, which surfaces only as a 403 from the
-# bootstrap -- a registered resource that no permission covers denies exactly
-# like an unregistered one.
-BLANKET_PERMISSIONS = ["alice-may-do-anything", "root-may-bootstrap"]
+# Permissions meant to cover every resource there is.
+#
+# The realm generator originally wrote their resource lists out in full, which
+# made "everything" an enumeration: registering a resource without adding it to
+# each list left the subject unable to touch it, and a registered resource that
+# no permission names denies exactly like an unregistered one -- a 403 from the
+# bootstrap with nothing to distinguish it from a policy answer.
+#
+# A Keycloak scope permission may simply omit `resources`, and then applies to
+# its scopes on whatever resource it is asked about. Verified against Keycloak
+# 26.7: with the lists dropped, root and alice are permitted on a resource that
+# no permission mentions, while bob -- whose permission still names its
+# resources -- is unchanged.
+BLANKET_PERMISSIONS = [
+    "alice-may-do-anything",
+    "root-may-bootstrap",
+    # The crawler reads metadata everywhere by design and its scope set carries
+    # no WRITE, so it belongs here too: a namespace added later is then covered
+    # without anyone having to remember to regenerate the realm.
+    "openmetadata-may-read-all-metadata",
+]
 
 
 def load() -> dict:
@@ -211,8 +226,9 @@ def add_pdp_entries(realm: dict) -> list[str]:
                 "type": "scope",
                 "logic": "POSITIVE",
                 "decisionStrategy": "AFFIRMATIVE",
+                # No `resources`: see BLANKET_PERMISSIONS. The scopes are the
+                # limit here, not the resource list.
                 "config": {
-                    "resources": json.dumps([r["name"] for r in resources]),
                     "scopes": read_scopes,
                     "applyPolicies": json.dumps(["is-openmetadata"]),
                 },
@@ -220,14 +236,16 @@ def add_pdp_entries(realm: dict) -> list[str]:
         )
     )
 
-    every_resource = json.dumps([r["name"] for r in resources])
     for name in BLANKET_PERMISSIONS:
         permission = next((p for p in policies if p["name"] == name), None)
         if permission is None:
             raise SystemExit(f"expected permission {name} in the realm")
-        if permission["config"]["resources"] != every_resource:
-            permission["config"]["resources"] = every_resource
-            changes.append(f"permission {name}: extended to every resource")
+        dropped = permission["config"].pop("resources", None)
+        if dropped is not None:
+            changes.append(
+                f"permission {name}: dropped {len(json.loads(dropped))} enumerated "
+                "resources, now applies to every resource"
+            )
 
     return changes
 

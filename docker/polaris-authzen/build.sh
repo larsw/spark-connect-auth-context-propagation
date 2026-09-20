@@ -36,7 +36,19 @@ fi
 
 echo "--- checking out $FORK_REF ---"
 git -C "$BUILD_DIR" fetch --depth 30 origin "$FORK_BRANCH"
-git -C "$BUILD_DIR" checkout --quiet "$FORK_REF"
+# reset rather than checkout: the patches below leave the tree dirty, and this has to be
+# re-runnable.
+git -C "$BUILD_DIR" reset --hard --quiet "$FORK_REF"
+
+# Fixes carried on top of the pinned fork commit, applied at build time rather than by moving
+# the pin, so it stays obvious which part is upstream's and which is ours. See patches/README.md.
+PATCH_DIR="$(cd "$(dirname "$0")" && pwd)/patches"
+if compgen -G "$PATCH_DIR/*.patch" >/dev/null; then
+  for patch in "$PATCH_DIR"/*.patch; do
+    echo "--- applying $(basename "$patch") ---"
+    git -C "$BUILD_DIR" apply --whitespace=nowarn "$patch"
+  done
+fi
 
 echo "--- building the Polaris server image (gradle + quarkus) ---"
 make -C "$BUILD_DIR" build-server

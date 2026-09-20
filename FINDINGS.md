@@ -487,6 +487,47 @@ Confusingly, this is *intermittent* when the token happens to expire on its own:
 recovered by itself on the second run, because Polaris re-fetched the token when the cached one
 aged out, not because it noticed the 401.
 
+### Fixed
+
+`docker/polaris-authzen/patches/0001-refresh-the-pdp-token-when-the-pdp-rejects-it.patch`, applied
+to the pinned fork commit at image build time. `BearerTokenProvider` grows an `invalidate()` that
+defaults to a no-op; `ClientCredentialsTokenProvider` implements it by fetching a replacement and
+re-aiming the scheduled refresh, single-flighted and rate-limited to one forced fetch per
+`refreshRetryInterval` so a credential that is simply wrong cannot flood the token endpoint; and
+`AuthzenPdpClient` treats `401` as "the credential was refused" rather than as a decision, replaces
+the token and asks again exactly once. `403` is deliberately not retried — a PDP may legitimately
+use it to say this client may not ask at all.
+
+Verified by reproducing the original failure: recreate the Keycloak container, then call Polaris.
+See `docker/polaris-authzen/patches/README.md`.
+
+### And the same problem one layer down, in authentication
+
+Fixing the authorization half exposed the authentication half, which is not Polaris's code at all.
+Rotating the realm keys also invalidates the JWKS that Quarkus OIDC has cached, and every user
+token then fails to verify:
+
+```
+WARN  OidcProvider: Verification of the token issued to client polaris has failed:
+      JWK with kid 'X18hflwPfDpQWxZz9PsvPasoXJ5uTDV37ugJz1dbHmg' is not available
+ERROR OidcProviderClientImpl: Request .../token/introspect has failed: status: 401,
+      {"error":"invalid_client","error_description":"Client authentication failed."}
+```
+
+Quarkus re-fetches the JWKS when it sees an unknown `kid`, but at most once every
+`quarkus.oidc.token.forced-jwk-refresh-interval` — **10 minutes** by default. That default is a
+sensible rate limit against an attacker spraying fabricated `kid`s; it is a poor fit for a realm
+that is recreated whenever its configuration changes. Quarkus then falls back to introspection,
+which this stack does not configure a client secret for, so it fails too, and the whole thing
+surfaces as a bare `401` with the useful detail only in Polaris's log.
+
+`compose.yaml` sets the interval to `5S`. The general point is the one §16 makes twice: a cache
+whose invalidation is driven only by *expiry* cannot notice that its contents stopped being valid
+early, and every such cache needs a path back from "what I hold is no longer accepted".
+
+With both in place, the realm can be recreated under a running stack and `make test-container`
+passes -- 46 tests, no restart of Polaris or Spark Connect.
+
 ## 17. A registered resource no permission covers denies exactly like an unregistered one
 
 §10 of `docs/authzen-pdp.md` warns that an unregistered `resource.id` is indistinguishable from a
@@ -504,11 +545,34 @@ FAIL (403) service-account-openmetadata -> metadata_reader
 
 Root could create the principal and the role, and then could not connect them -- because the
 *assignment* is authorized against the new resources, which root's blanket permission did not
-mention. `docker/keycloak/add-openmetadata-client.py` now re-writes both permissions to cover every
-registered resource, which is the only form that stays correct as resources are added.
+mention.
 
-The general shape: in Keycloak's model "allowed on everything" is spelled as an enumeration, so it
-silently stops meaning everything the moment the world grows.
+The general shape: in Keycloak's model "allowed on everything" had been spelled as an enumeration,
+so it silently stopped meaning everything the moment the world grew.
+
+### Fixed
+
+A Keycloak scope permission may simply **omit `resources`**, and then applies to its scopes on
+whatever resource it is asked about. `docker/keycloak/add-openmetadata-client.py` now drops the
+resource list from the three permissions that are meant to be unrestricted --
+`alice-may-do-anything`, `root-may-bootstrap` and `openmetadata-may-read-all-metadata` -- rather
+than trying to keep an enumeration complete.
+
+Verified against Keycloak 26.7 on a throwaway realm carrying a `canary_resource` that is registered
+but named by no permission at all:
+
+```
+  root   LOAD_TABLE  canary_resource  -> true      (was: deny)
+  alice  LOAD_TABLE  canary_resource  -> true      (was: deny)
+
+  bob    LOAD_TABLE_WITH_READ_DELEGATION  salaries -> false   (unchanged)
+  bob    LOAD_TABLE_WITH_READ_DELEGATION  events   -> true    (unchanged)
+  crawler UPDATE_TABLE                    salaries -> false   (unchanged)
+```
+
+bob keeps his enumerated resource list, because for him the enumeration *is* the policy. The
+scopes, not the resources, are what bound the three unrestricted ones -- which is why the crawler
+can join them safely: its scope set contains no `WRITE`.
 
 ## 18. The OpenMetadata Iceberg connector was deleted, and reviving it is a custom connector
 
