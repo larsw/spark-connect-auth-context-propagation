@@ -467,6 +467,44 @@ FINDINGS.md. The main Polaris repo has no UI at all.
 
 ---
 
+## 5c. Milestone G — Ontop VKG, a SPARQL endpoint on the same identity (added 2026-09-21)
+
+The question: can a knowledge-graph front end sit in front of this stack without becoming the one
+identity everything arrives as? It can, but not with stock Ontop.
+
+- [x] G1 Fork `larsw/ontop` at `version5-auth-context`. Five commits, all opt-in, all default
+      methods so nothing downstream moves:
+      the caller's `QueryContext` reaches connection acquisition;
+      `ContextPropagatingJDBCConnectionPool` builds each request's JDBC URL from it;
+      `ontop.queryIdHttpHeader` makes Ontop's query id the caller's correlation ID;
+      `SparkConnectDriver` registered as the SparkSQL dialect;
+      and three places where Spark's JDBC driver is stricter than Hive's.
+- [x] G2 `docker/ontop/` — image built from the fork at a pinned commit, with the Spark Connect
+      JDBC driver's runtime closure resolved into `jdbc/`. Java 17: Spark 4 needs it and Ontop's
+      Spring Boot 2.7 will not go further.
+- [x] G3 R2RML mapping over `polaris.shared.events` and `polaris.restricted.salaries`, in Spark
+      SQL, three-part names and all.
+- [x] G4 The endpoint holds **no credential for the data**. Table definitions come from a
+      committed `db-metadata.json`, so Ontop never introspects at start-up and never has to be
+      anybody. `make ontop-metadata` regenerates it live, as alice.
+- [x] G5 `PropagatedIdentityHolder.bindToCurrentThread` — AnalyzePlan never reaches an
+      ExecutionThread, so §4's job tag does not exist for it. The three earlier clients never
+      exposed this; a JDBC driver asks for a schema on every metadata call.
+- [x] G6 `tests/test_ontop.py` — six checks, including bob refused the restricted namespace by
+      Polaris through SPARQL, and one correlation ID grepped from the HTTP caller to Polaris.
+- [x] G7 `demo/sparql.py` and `make demo-sparql`.
+
+**Why it matters here:** it is the same authorisation decision again, one hop further out, and
+the endpoint in front of it is not trusted with anything. bob's SPARQL query is refused by Polaris
+naming bob, against a mapping that offers him exactly what it offers alice.
+
+**What it cost:** nine upstream behaviours, written up as §16 of FINDINGS.md. The two that would
+have been hardest to guess: Spark's JDBC `token` parameter silently forces TLS and drops the
+header unless the host is local, and Polaris cannot express "read the schema but not the data"
+because Spark asks for vended credentials on every `loadTable`.
+
+---
+
 ## 6. Open risks
 
 All four original risks are resolved. Recorded here with how.
@@ -489,3 +527,7 @@ All four original risks are resolved. Recorded here with how.
   `shared`; listing at catalog scope returns 403. Acceptable, and arguably correct.
 * Recreating the Keycloak container rotates its signing keys; Polaris and our validator log one
   JWKS failure and recover on refresh.
+* Ontop's predefined-query engine still takes its connection without a context, so against the
+  context-aware pool it would run as whatever `jdbc.url` names. Not used here; noted in the fork.
+* `docker/ontop/db-metadata.json` is a committed snapshot. Change the mapped tables and it needs
+  `make ontop-metadata` and an image rebuild.

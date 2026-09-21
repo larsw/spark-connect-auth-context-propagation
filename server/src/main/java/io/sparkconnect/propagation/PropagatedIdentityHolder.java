@@ -26,6 +26,14 @@ import org.slf4j.LoggerFactory;
  * sessionId) always, and the AuthManager recovers both keys by parsing the job tag off the calling
  * thread's local properties.
  *
+ * <p><strong>Not every request gets an ExecutionThread.</strong> AnalyzePlan is answered
+ * synchronously on the gRPC handler thread -- no {@code withSession}, so no job tag at all. A
+ * client that asks for a schema before running anything (the Spark Connect JDBC driver does, on
+ * every {@code DatabaseMetaData} call) therefore resolves the relation, and calls the catalog,
+ * with nothing for the AuthManager to find. {@link #bindToCurrentThread} covers that case: the
+ * interceptor binds the identity to the handler thread for the duration of the call, and
+ * {@link #currentIdentity()} falls back to it when there is no job tag.
+ *
  * <p><strong>Keying by operation.</strong> Stock PySpark leaves
  * {@code ExecutePlanRequest.operation_id} empty -- every call site invokes the private
  * {@code _execute_plan_request_with_metadata()} with no argument -- and the server then generates
@@ -84,6 +92,14 @@ public final class PropagatedIdentityHolder {
    */
   private static final ConcurrentMap<String, String> SESSION_OWNER = new ConcurrentHashMap<>();
 
+  /**
+   * The identity of the request being handled on this thread, for the RPCs Spark answers inline
+   * rather than on an ExecutionThread. Deliberately NOT inheritable: a thread Spark spawns from
+   * here is Spark's, and if it is one that talks to the catalog it must find its identity through
+   * the job tag like everything else, or an identity could outlive the call that set it.
+   */
+  private static final ThreadLocal<PropagatedIdentity> CURRENT_THREAD_IDENTITY = new ThreadLocal<>();
+
   private PropagatedIdentityHolder() {}
 
   public static void put(String userId, String sessionId, PropagatedIdentity identity) {
@@ -134,9 +150,40 @@ public final class PropagatedIdentityHolder {
     return Optional.of(owner);
   }
 
-  /** Looks up the identity for whichever Connect operation owns the calling thread. */
+  /**
+   * Binds an identity to the calling thread until the returned scope is closed.
+   *
+   * <p>For the RPCs that never reach an ExecutionThread. The job tag still wins where there is
+   * one: an ExecutionThread is a different thread from the gRPC handler, so the two never meet.
+   */
+  public static Scope bindToCurrentThread(PropagatedIdentity identity) {
+    PropagatedIdentity previous = CURRENT_THREAD_IDENTITY.get();
+    CURRENT_THREAD_IDENTITY.set(identity);
+    return () -> {
+      if (previous == null) {
+        CURRENT_THREAD_IDENTITY.remove();
+      } else {
+        CURRENT_THREAD_IDENTITY.set(previous);
+      }
+    };
+  }
+
+  /** What {@link #bindToCurrentThread} hands back. Closing it is not optional. */
+  public interface Scope extends AutoCloseable {
+    @Override
+    void close();
+  }
+
+  /**
+   * Looks up the identity for whichever Connect operation owns the calling thread: the job tag of
+   * an ExecutionThread, or failing that whatever the interceptor bound to this very thread.
+   */
   public static Optional<PropagatedIdentity> currentIdentity() {
-    return currentJobTag().flatMap(PropagatedIdentityHolder::identityFor);
+    Optional<PropagatedIdentity> fromJobTag = currentJobTag().flatMap(PropagatedIdentityHolder::identityFor);
+    if (fromJobTag.isPresent()) {
+      return fromJobTag;
+    }
+    return Optional.ofNullable(CURRENT_THREAD_IDENTITY.get());
   }
 
   /**
@@ -216,6 +263,7 @@ public final class PropagatedIdentityHolder {
     BY_SESSION.clear();
     BY_OPERATION.clear();
     SESSION_OWNER.clear();
+    CURRENT_THREAD_IDENTITY.remove();
   }
 
   static int trackedOperationCount() {

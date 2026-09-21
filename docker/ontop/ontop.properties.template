@@ -1,0 +1,66 @@
+# ============================================================================
+# Ontop VKG -- server-owned configuration.
+#
+# Rendered by entrypoint.sh, which substitutes @CONNECT_SHARED_SECRET@. Nothing else in here is
+# dynamic; in particular the caller's token never appears in a file, it is read from the request.
+# ============================================================================
+
+jdbc.driver = org.apache.spark.sql.connect.client.jdbc.SparkConnectDriver
+
+# ---- per-request connections ------------------------------------------------
+# The fork's contribution. This pool opens one connection per SPARQL request and builds its URL
+# from the QueryContext of that request, so the query reaches Spark Connect as the caller rather
+# than as Ontop:
+#
+#   {bearer}     the caller's own OIDC token, straight off the Authorization header
+#   {claim:sub}  its subject -- Spark Connect refuses a session whose user_id is someone else's
+#   {queryId}    the correlation ID (see ontop.queryIdHttpHeader below)
+#
+# Everything the driver does not recognise as one of its own parameters becomes gRPC metadata,
+# which is where the propagation plugin on the server looks.
+#
+# Spark's own channel-level pre-shared key rides 'authorization', spelled out as a header rather
+# than passed as the driver's 'token' parameter. That parameter looks like the obvious way to set
+# it and is not: the Scala client only puts a token on the wire when the target is local, and
+# otherwise switches the channel to TLS, which this plaintext server does not speak. The %20 is
+# there because the URL is parsed as a java.net.URI, which decodes it back to a space.
+it.unibz.inf.ontop.answering.connection.pool.JDBCConnectionPool = \
+  it.unibz.inf.ontop.answering.connection.pool.impl.ContextPropagatingJDBCConnectionPool
+
+jdbc.contextual.urlTemplate = jdbc:sc://@SPARK_REMOTE_HOST@:@SPARK_REMOTE_PORT@/;\
+authorization=Bearer%20@CONNECT_SHARED_SECRET@;\
+user_id={claim:sub};x-user-token={bearer};x-correlation-id={queryId}
+
+# The URL used by anything that takes a connection OUTSIDE a request. Nothing does here -- the
+# table definitions come from db-metadata.json, so Ontop never introspects -- and it deliberately
+# carries no user token, so if that ever changes Spark Connect refuses the connection instead of
+# quietly serving it as somebody.
+jdbc.url = jdbc:sc://@SPARK_REMOTE_HOST@:@SPARK_REMOTE_PORT@/;\
+authorization=Bearer%20@CONNECT_SHARED_SECRET@;x-correlation-id=ontop-no-caller
+
+# ---- correlation ------------------------------------------------------------
+# Adopt the caller's correlation ID as Ontop's query id, so the id in Ontop's query log is the
+# same one that reaches Spark Connect, Polaris and MinIO. Without this the two are unrelated
+# UUIDs and the whole chain can no longer be grepped with one value.
+ontop.queryIdHttpHeader = x-correlation-id
+
+ontop.queryLogging = true
+ontop.queryLogging.includeSparqlQuery = true
+ontop.queryLogging.includeTables = true
+ontop.queryLogging.includeUserInfo = true
+ontop.queryLogging.includeHttpHeader.x-correlation-id = true
+# NOTE: deliberately NOT includeHttpHeader.authorization -- that would put the caller's bearer
+# token into the query log.
+
+# ---- authorization ----------------------------------------------------------
+# Lets Ontop extract the caller's identity from the request. It does not authorize anything here:
+# the decision is Polaris's, and it is made against the caller's token, not against this flag.
+ontop.authorization = true
+
+# ---- DELIBERATE OMISSION ----------------------------------------------------
+# There is no jdbc.user, no jdbc.password and no token for any user. The endpoint holds no
+# credential for the data at all: the only one on the wire is the caller's own, read from their
+# request. @CONNECT_SHARED_SECRET@ is not a data credential -- it is Spark's channel-level check
+# that the client is a trusted one, and it says nothing about who is asking.
+#
+# If a user token ever appears in this file, the per-caller authorisation the tests assert is void.

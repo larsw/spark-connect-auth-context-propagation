@@ -268,6 +268,55 @@ services:
       # and the API does not need to be reachable from the browser at all.
       - "3001:3000"
 
+  # -------------------------------------------------------------- Ontop VKG --
+  # A SPARQL endpoint over the same Iceberg tables, built from a fork of Ontop that can carry the
+  # caller's identity and correlation ID down to the data source. Stock Ontop cannot: it holds one
+  # JDBC connection pool with one set of credentials, so every SPARQL caller would reach Spark
+  # Connect as Ontop and Polaris would have no idea who actually asked.
+  #
+  # It holds no credential for the data itself -- only the caller's own token ever reaches Spark.
+  # The table definitions come from a pinned db-metadata.json, so it never has to introspect.
+  #
+  # See docker/ontop/README.md for what the fork changes.
+  ontop:
+    build:
+      context: ./docker/ontop
+      args:
+        # Pinned so `make build` is reproducible. Bump the ref to pick up fork changes.
+        ONTOP_REPO: "${ONTOP_REPO:-https://github.com/larsw/ontop.git}"
+        ONTOP_REF: "${ONTOP_REF:-738ed7d61f8c0b1d3cf48cfcc327abe03a463d9f}"
+        SPARK_VERSION: "4.1.3"
+    image: spark-connect-propagation/ontop:0.1.0
+    restart: unless-stopped
+    depends_on:
+      spark-connect:
+        condition: service_healthy
+      polaris-setup:
+        condition: service_completed_successfully
+    environment:
+      KEYCLOAK_ISSUER: "http://keycloak:8080/realms/spark"
+      # Spark's channel-level pre-shared key, exactly as the other clients use it. It says "this
+      # is a trusted client"; the per-user JWT on x-user-token says which user.
+      CONNECT_SHARED_SECRET: "${CONNECT_SHARED_SECRET:-poc-shared-secret}"
+      # The two --add-opens are Arrow's, not Ontop's: the Spark Connect client decodes results as
+      # Arrow record batches, and Arrow reaches into java.nio's direct-buffer internals. Without
+      # them the first query dies in a static initialiser, long before anything about identity
+      # matters. Spark's own bin/spark-submit sets the same flags; a JDBC client of it has to.
+      ONTOP_JAVA_ARGS: >-
+        -Xmx1g
+        --add-opens=java.base/java.nio=ALL-UNNAMED
+        --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+        -Dio.netty.tryReflectionSetAccessible=true
+    ports:
+      # 8090 on the host: 8080 is Keycloak's.
+      - "8090:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8080/"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
   # ------------------------------------------------------------------ client --
   # Profiled, so it never starts with the stack. Run it explicitly:
   #   docker compose run --rm client tests/smoke.py
@@ -286,6 +335,8 @@ services:
       # Port 80 inside the network: 3000 is only the host-published port, so the default the
       # tests use on the host would connect-refuse from in here.
       POLARIS_CONSOLE_URL: "http://polaris-console"
+      # Same reasoning: 8090 is only the host-published port.
+      ONTOP_URL: "http://ontop:8080"
       CONNECT_SHARED_SECRET: "${CONNECT_SHARED_SECRET:-poc-shared-secret}"
     volumes:
       - ./client:/work/client:ro

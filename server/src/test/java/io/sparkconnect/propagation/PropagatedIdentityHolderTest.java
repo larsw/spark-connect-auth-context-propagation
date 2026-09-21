@@ -220,6 +220,54 @@ class PropagatedIdentityHolderTest {
     }
 
     @Test
+    @DisplayName("an identity bound to this thread is found when there is no job tag")
+    void threadBoundIdentityIsTheFallback() {
+      // No Spark context in a unit test, so currentIdentity() finds no job tag -- which is exactly
+      // the situation on the gRPC handler thread that answers AnalyzePlan.
+      assertTrue(PropagatedIdentityHolder.currentIdentity().isEmpty());
+
+      PropagatedIdentity bound = identity("cid-analyze");
+      try (PropagatedIdentityHolder.Scope scope =
+              PropagatedIdentityHolder.bindToCurrentThread(bound)) {
+        assertEquals(Optional.of(bound), PropagatedIdentityHolder.currentIdentity());
+      }
+
+      assertTrue(
+          PropagatedIdentityHolder.currentIdentity().isEmpty(),
+          "closing the scope must unbind it, or an identity outlives its call");
+    }
+
+    @Test
+    @DisplayName("nested binds restore the outer identity")
+    void threadBoundIdentityNests() {
+      PropagatedIdentity outer = identity("cid-outer");
+      PropagatedIdentity inner = identity("cid-inner");
+
+      try (PropagatedIdentityHolder.Scope outerScope =
+              PropagatedIdentityHolder.bindToCurrentThread(outer)) {
+        try (PropagatedIdentityHolder.Scope innerScope =
+                PropagatedIdentityHolder.bindToCurrentThread(inner)) {
+          assertEquals(Optional.of(inner), PropagatedIdentityHolder.currentIdentity());
+        }
+        assertEquals(Optional.of(outer), PropagatedIdentityHolder.currentIdentity());
+      }
+    }
+
+    @Test
+    @DisplayName("a thread that was never bound sees nothing")
+    void threadBoundIdentityDoesNotLeakAcrossThreads() throws Exception {
+      try (PropagatedIdentityHolder.Scope scope =
+              PropagatedIdentityHolder.bindToCurrentThread(identity("cid-here"))) {
+        Optional<PropagatedIdentity>[] seen = new Optional[1];
+        Thread other = new Thread(() -> seen[0] = PropagatedIdentityHolder.currentIdentity());
+        other.start();
+        other.join();
+
+        assertTrue(seen[0].isEmpty(), "the binding must not reach a thread Spark spawned");
+      }
+    }
+
+    @Test
     @DisplayName("an operation id never crosses sessions or users")
     void operationKeyIncludesUserAndSession() {
       PropagatedIdentityHolder.put(USER, SESSION, "op-shared", identity("cid-alice"));

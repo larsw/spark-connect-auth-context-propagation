@@ -1,0 +1,49 @@
+#
+# R2RML mapping over the two Iceberg tables the demo creates in Polaris.
+#
+# Both logical tables are Spark SQL, three-part names and all, executed over Spark Connect by
+# whoever asked the SPARQL question. Which is the whole point: 'restricted.salaries' is in this
+# mapping for everybody, and Polaris still refuses to serve it to bob.
+#
+@prefix rr:   <http://www.w3.org/ns/r2rml#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix :     <http://example.org/poc#> .
+
+<#EventMapping> a rr:TriplesMap ;
+    rr:logicalTable [
+        rr:sqlQuery """SELECT id, kind FROM polaris.shared.events"""
+    ] ;
+    rr:subjectMap [
+        rr:template "http://example.org/poc/event/{id}" ;
+        rr:class :Event
+    ] ;
+    rr:predicateObjectMap [
+        rr:predicate :eventId ;
+        rr:objectMap [ rr:column "id" ; rr:datatype xsd:long ]
+    ] ;
+    rr:predicateObjectMap [
+        rr:predicate :kind ;
+        rr:objectMap [ rr:column "kind" ]
+    ] ;
+    rr:predicateObjectMap [
+        rr:predicate rdfs:label ;
+        rr:objectMap [ rr:template "event {id}: {kind}" ]
+    ] .
+
+<#SalaryMapping> a rr:TriplesMap ;
+    rr:logicalTable [
+        rr:sqlQuery """SELECT person, amount FROM polaris.restricted.salaries"""
+    ] ;
+    rr:subjectMap [
+        rr:template "http://example.org/poc/person/{person}" ;
+        rr:class :Person
+    ] ;
+    rr:predicateObjectMap [
+        rr:predicate :name ;
+        rr:objectMap [ rr:column "person" ]
+    ] ;
+    rr:predicateObjectMap [
+        rr:predicate :salary ;
+        rr:objectMap [ rr:column "amount" ; rr:datatype xsd:long ]
+    ] .

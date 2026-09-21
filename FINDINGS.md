@@ -454,3 +454,116 @@ Spark 4.1 moved `QueryExecution` behind the `classic` module and changed that re
 listener compiled against 4.0 fails at link time — and a listener that throws does not merely stop
 collecting lineage, it stops the query engine. The newest release module is still `spark40`; 1.53.0
 works on 4.1.3 regardless, but pin it deliberately rather than by luck.
+
+## 16. A SPARQL endpoint in front of this stack: what had to give
+
+Putting [Ontop VKG](https://ontop-vkg.org) in front of the same tables meant making a SPARQL
+caller's identity survive one more hop. Nine things turned up, in three groups: what Ontop assumes,
+what Spark's own JDBC driver does and does not do, and one thing Polaris cannot express.
+
+Versions: Ontop 5.6.0-SNAPSHOT (fork of `version5`), `spark-connect-client-jdbc_2.13` 4.1.3.
+
+### Ontop
+
+**Its connection pool is process-wide and its credentials are static.** `QueryContext` has carried
+the request's HTTP headers, user, roles and groups since authorization was added, so Ontop knows
+perfectly well who asked. The JDBC connection, though, comes from a pool built once from
+`jdbc.url` / `jdbc.user` / `jdbc.password`, and the connection is taken *before* the query is even
+prepared (`OntopVirtualRepository.getConnection()`, then `prepareQuery(..., httpHeaders)`). So the
+database only ever sees one account. Behind a private back end that is the right design — Ontop is
+then the only place access is decided. In front of a catalog that authorises end users itself it
+throws that catalog's access control away.
+
+The fork adds `getConnection(QueryContext)` down the chain, a `ContextPropagatingJDBCConnectionPool`
+that builds each request's JDBC URL from the caller's context, and `ontop.queryIdHttpHeader` so
+Ontop's own query id *is* the caller's correlation ID. All three are opt-in defaults; the shared
+pools are untouched. See [docker/ontop/README.md](docker/ontop/README.md).
+
+**It picks the SQL dialect by JDBC driver class name.** `sql-default.properties` maps
+`org.apache.hive.jdbc.HiveDriver`, `com.simba.spark.jdbc.Driver` and
+`com.databricks.client.jdbc.Driver` to the `SparkSQL*` factories. Spark's own
+`SparkConnectDriver` — the one Spark itself ships — was not there, so Ontop fell through to the
+generic dialect and generated SQL Spark does not speak, against a Spark it was otherwise talking
+to perfectly well. Same dialect, different transport; four lines of properties.
+
+### The Spark Connect JDBC driver
+
+**Unknown connection-string parameters become gRPC metadata.** This is the seam the whole
+integration hangs on. `SparkConnectClient.Builder.parseURIParams` recognises `user_id`, `use_ssl`,
+`token`, `user_agent`, `session_id` and `grpc_max_message_size`; *everything else* is passed to
+`option(k, v)`, which ends up in `Configuration.metadata` and is stamped onto every call by
+`MetadataHeaderClientInterceptor`. So
+
+```
+jdbc:sc://spark-connect:15002/;user_id=<sub>;x-user-token=<jwt>;x-correlation-id=<uuid>
+```
+
+puts the user's token and the correlation ID exactly where `UserTokenServerInterceptor` reads them.
+No fork of Spark, no custom driver.
+
+**`token` is not the way to set the Authorization header, despite appearances.**
+`Configuration.credentials()` reads: if SSL is not explicitly enabled *and* a token is defined
+*and* the host is not local, use `TlsChannelCredentials`. And the header is only added to the
+metadata map when the host *is* local. So against a remote plaintext server, `token=` silently
+switches the channel to TLS and drops the header — the failure looks like `UNAVAILABLE: io
+exception` with an `SslHandler` in the channel pipeline, which says nothing about tokens. Spelling
+it out as ordinary metadata works, with the space percent-encoded because the connection string is
+parsed as a `java.net.URI` (whose `getPath()` decodes it again):
+
+```
+;authorization=Bearer%20<shared-secret>
+```
+
+**Arrow needs `--add-opens` on Java 17.** The client decodes results as Arrow record batches, and
+Arrow reaches into `java.nio`'s direct-buffer internals. Without
+`--add-opens=java.base/java.nio=ALL-UNNAMED` the first query dies in a static initialiser
+(`ArrowBuf.getDirectBuffer` → `ExceptionInInitializerError`) with no hint that a JVM flag is
+missing. `bin/spark-submit` sets these for Spark's own processes; a third-party JDBC client of
+Spark has to set them itself.
+
+**It implements the JDBC surface strictly, and refuses the rest.** Where the Hive driver returns
+empty result sets, this one throws:
+
+| Call | Result |
+|---|---|
+| `getTables(..., {"TABLE","VIEW","SYSTEM"})` | `SQLException: The requested table types contains unsupported items: SYSTEM` |
+| `getPrimaryKeys`, `getIndexInfo`, `getImportedKeys` | `SQLFeatureNotSupportedException` |
+| `createStatement(TYPE_FORWARD_ONLY, CONCUR_READ_ONLY)` | `SQLFeatureNotSupportedException` — only the no-argument form exists |
+| `setFetchSize` | `SQLFeatureNotSupportedException` |
+
+None of these change a row: Spark has no SYSTEM relations and no keys, and the last two ask for the
+JDBC defaults and a buffering hint. But each surfaced as a bare
+`OntopConnectionException: java.sql.SQLFeatureNotSupportedException`, naming neither the call nor
+the driver. The fork attempts each and falls back.
+
+### This PoC's own plugin
+
+**AnalyzePlan never reaches an ExecutionThread, so §4's job tag does not exist.** Spark answers it
+synchronously on the gRPC handler thread — no `withSession`, no tag. The Python, JVM and Rust
+clients never exposed this because they only ever ran statements; a JDBC driver asks for a schema
+first, on every `DatabaseMetaData` call. The catalog request then went out unauthenticated and
+Polaris answered 401, with the same empty `[,]` MDC as in §15.
+
+`PropagatedIdentityHolder.bindToCurrentThread` closes it: the interceptor binds the identity to the
+handler thread for the duration of `onHalfClose`, and `currentIdentity()` falls back to it when
+there is no job tag. The binding is deliberately *not* inheritable — a thread Spark spawns must
+find its identity through the tag like everything else, or an identity could outlive its call.
+
+### Polaris
+
+**There is no "read the schema but not the data".** The obvious design for a SPARQL endpoint that
+introspects at start-up is to give it a principal with `TABLE_READ_PROPERTIES` and no
+`TABLE_READ_DATA`. It does not work, and not because of a missing privilege:
+`spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation` is `vended-credentials` for the
+whole server, so *every* `loadTable` asks Polaris to vend storage credentials, and Polaris
+authorises that as `LOAD_TABLE_WITH_READ_DELEGATION` — which needs `TABLE_READ_DATA`. A principal
+that may only look at column names cannot get past `loadTable` to see them.
+
+Listing is separately awkward: `getTables(null, null, ...)` needs `NAMESPACE_LIST` **at the
+catalog**, not on each namespace, and `LIST_VIEWS` is authorised apart from `LIST_TABLES`, so a
+grant set that looks complete fails twice in a row on operations the caller never asked for by
+name.
+
+The endpoint here therefore pins its table definitions in a committed `db-metadata.json` and
+introspects only when a human runs `make ontop-metadata`. Which is the better answer anyway: it
+holds no credential at all.
