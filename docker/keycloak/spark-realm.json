@@ -229,6 +229,45 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "sparql-console",
+      "name": "SPARQL console (public SPA)",
+      "description": "Browser app; authorization code + PKCE. The token it receives is forwarded verbatim to the Ontop endpoint, so it must be addressed to spark-connect.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://localhost:3002",
+      "baseUrl": "/",
+      "redirectUris": [
+        "http://localhost:3002/*",
+        "http://sparql-console:3002/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3002",
+        "http://sparql-console:3002"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3002/*##http://sparql-console:3002/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "spark-connect-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "spark-connect",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ]
 }

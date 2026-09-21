@@ -8,7 +8,7 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-**Status:** complete and verified. 35 end-to-end checks against the live stack, plus 92 unit tests.
+**Status:** complete and verified. 40 end-to-end checks against the live stack, plus 92 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and
 [TODO.md](TODO.md) for the full decision record.
 
@@ -27,6 +27,7 @@ See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstre
 | **The same identity in a UI** | The Apache Polaris console signs in as alice or bob through the same realm, and renders only what that user may see |
 | **Three client languages** | The Python, JVM and Rust clients present the same headers and client-minted operation ids to one unchanged server |
 | **The same identity in SPARQL** | An Ontop VKG endpoint answers SPARQL over the same tables, and Polaris refuses bob the same namespace — because the query reaches Spark Connect as bob |
+| **...and in a browser** | A React/YASGUI console signs in through the same realm and sends the user's own token, so alice and bob get different answers to the same SPARQL |
 
 ## Quickstart
 
@@ -39,12 +40,13 @@ make demo-jvm    # the same walkthrough, driven by the JVM client
 make demo-rust   # ... and by the Rust client
 make seed        # create the demo tables (what the SPARQL endpoint waits for)
 make demo-sparql # the same two users asking the same questions in SPARQL, through Ontop
+                 # ...or the same thing in a browser: http://localhost:3002
 make test        # full suite on the host
 ```
 
 `make test-unit` runs the client unit tests with no stack, no docker and no network.
 `make test-container` runs the full suite inside the compose network, needing no host setup at
-all. Between them: 26 Python unit tests, 25 end-to-end, 24 Java plugin tests via `make jar`, and
+all. Between them: 26 Python unit tests, 30 end-to-end, 24 Java plugin tests via `make jar`, and
 28 JVM client tests via `make test-jvm` and 14 Rust ones via `make test-rust` (each has five more
 that run against the stack, with `make test-jvm-it` and `make test-rust-it`).
 
@@ -135,12 +137,13 @@ column looks the way it does is in [FINDINGS.md](FINDINGS.md) §5, §12 and §13
 ```
 install.sh              toolchain and /etc/hosts preflight; prompts before sudo
 Makefile                install / build / up / demo{,-jvm,-rust} / test{,-jvm,-rust}{,-it} / cid / down
-compose.yaml            keycloak, minio (+audit sink), polaris (+console), marquez, ontop, spark master/worker/connect
+compose.yaml            keycloak, minio (+audit sink), polaris (+console), marquez, ontop (+console), spark master/worker/connect
 docker/keycloak/        realm: alice, bob, four clients, audience and claim mappers
 docker/polaris/         idempotent bootstrap: catalog, namespaces, principals, grants
 docker/polaris-console/ builds the Apache Polaris web console from pinned upstream source
 docker/spark/           image, spark-defaults.conf, log4j2.properties, role entrypoint
 docker/ontop/           Ontop VKG built from a fork that carries the caller's identity; R2RML mapping
+sparql-console/         React + YASGUI front end for it; Blueprint, bun/Vite, OIDC via Keycloak
 server/                 the Java plugin (one Maven module, one jar)
 client/                 the PySpark client package
 client-jvm/             the same client for the JVM, in Java (Maven)
@@ -349,6 +352,21 @@ file — nothing. The table definitions it needs to compile SPARQL into SQL are 
 was authorised against the caller's own token, and a request without one is refused because there
 is nothing for it to borrow.
 
+### The same thing with a cursor in it
+
+`http://localhost:3002` is a browser console for that endpoint: React and React Router, YASGUI for
+the editor and result table, Blueprint for the widgets, built with bun and Vite. It signs in
+through the same realm as everything else — authorization code + PKCE, no secret anywhere — and
+puts the user's own token on each query, along with a fresh `X-Correlation-ID` shown in the navbar
+so it can be pasted straight into `make cid`.
+
+Sign in as alice, ask for the salaries, get two rows. Sign out, sign in as bob, ask the same
+question in the same console, and Polaris refuses him by name. Nothing about the console changed
+between those two queries; the token on the connection did.
+
+Details, and the two traps it walks around, are in
+[sparql-console/README.md](sparql-console/README.md). `make console` runs it with HMR instead.
+
 ### Why this needed a fork
 
 Ontop knows who asked — its `QueryContext` carries the request's headers, user, roles and groups.
@@ -470,6 +488,7 @@ what the page tells you if you get it wrong.
 | **Polaris console** | **[http://localhost:3000](http://localhost:3000)** — localhost, never the service name ([why](#the-polaris-console)) |
 | MinIO console | http://minio:9001 |
 | **Ontop SPARQL** | **[http://localhost:8090](http://localhost:8090)** — `/sparql` wants `Authorization: Bearer <token>` |
+| **SPARQL console** | **[http://localhost:3002](http://localhost:3002)** — localhost, never the service name ([why](#the-polaris-console)) |
 | Marquez (lineage UI) | [http://localhost:3001](http://localhost:3001) |
 | OpenLineage API (Marquez) | http://localhost:5000/api/v1/lineage — where the Spark listener posts; admin on :5001 |
 | Spark master | http://spark-master:8082 |

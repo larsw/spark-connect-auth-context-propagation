@@ -17,7 +17,7 @@ JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
 
 .DEFAULT_GOAL := help
-.PHONY: help install jar client-jar client-rust build up bootstrap seed ontop-metadata demo demo-jvm demo-rust demo-sparql test-unit test test-jvm test-jvm-it test-rust test-rust-it test-container logs cid ps down clean
+.PHONY: help install jar client-jar client-rust build up bootstrap seed ontop-metadata demo demo-jvm demo-rust demo-sparql console test-unit test test-jvm test-jvm-it test-rust test-rust-it test-container logs cid ps down clean
 
 help: ## Show this help
 	@echo "Spark Connect propagation PoC"
@@ -59,6 +59,7 @@ up: ## Start the whole stack and wait until Spark Connect is accepting connectio
 	@echo "  Polaris        http://polaris:8181"
 	@echo "  MinIO console  http://minio:9001          (minio_root/m1n1opwd)"
 	@echo "  Ontop SPARQL   http://localhost:8090      (VKG endpoint; needs 'make seed' first)"
+	@echo "  SPARQL console http://localhost:3002      (browser UI for it; sign in as alice/bob)"
 	@echo "  Marquez        http://localhost:3001      (lineage UI)"
 	@echo "  OpenLineage    http://localhost:5000/api/v1/lineage"
 	@echo "  Spark master   http://spark-master:8082"
@@ -91,6 +92,9 @@ demo-rust: ## The same walkthrough again, driven by the Rust client
 
 demo-sparql: ## The same two users asking the same questions in SPARQL, through Ontop
 	@cd client && uv run python ../demo/sparql.py
+
+console: ## Run the SPARQL console's dev server on http://localhost:3002 (needs bun)
+	@cd sparql-console && bun install && bun run dev
 
 test-unit: ## Fast client unit tests -- no stack, no docker, no network
 	@cd client && uv run pytest ../tests/test_client_unit.py -q

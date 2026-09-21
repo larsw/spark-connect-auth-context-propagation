@@ -1,0 +1,62 @@
+/* Blueprint owns the widgets; this is only layout and the few places YASGUI needs to be told
+   how much room it has. */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.sparql-console-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sparql-console-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.sparql-console-brand {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sparql-console-callout {
+  margin-bottom: 16px;
+}
+
+.sparql-console-sample {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  font-size: 12px;
+  background: rgba(17, 20, 24, 0.06);
+  border-radius: 3px;
+}
+
+/* YASGUI ships its own light theme and does not follow Blueprint's dark class, so the console
+   stays light rather than rendering half a dark UI. */
+.sparql-console-yasgui {
+  background: #fff;
+  border: 1px solid rgba(17, 20, 24, 0.15);
+  border-radius: 3px;
+}
+
+.sparql-console-about {
+  max-width: 60rem;
+}
+
+.sparql-console-table {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.sparql-console-table td:first-child {
+  width: 14rem;
+  font-weight: 600;
+}

@@ -505,6 +505,30 @@ because Spark asks for vended credentials on every `loadTable`.
 
 ---
 
+## 5d. Milestone H — the SPARQL console (added 2026-09-21)
+
+- [x] H1 `sparql-console/` — React 19, React Router 8, YASGUI 4, Blueprint 6, bun + Vite 8.
+      Public OIDC client, authorization code + PKCE S256, token in `sessionStorage`.
+- [x] H2 YASGUI's `requestConfig.headers` as a **function**, so a silently-renewed token and a
+      fresh correlation ID are both right on every query rather than only the first.
+- [x] H3 Keycloak client `sparql-console`, with the same `spark-connect` audience mapper the CLI
+      client carries — without it the token is refused several hops later.
+- [x] H4 nginx image with the runtime `/config.js` and the secure-context guard, both lifted from
+      the Polaris console: the same PKCE-needs-localhost trap applies.
+- [x] H5 `tests/test_sparql_console.py` — five checks on the wiring that fails silently: the
+      rendered config, that it holds no token, the SPA fallback for `/auth/callback`, and the
+      running realm's client, PKCE method, redirect URI and audience mapper.
+
+**Verified in a real browser**: alice gets 3 events and 2 salaries; bob gets the 3 events and is
+refused the salaries by Polaris, naming bob; a correlation ID minted in the browser turns up in
+both the Spark Connect and Polaris logs.
+
+**One design call worth recording.** Sign out is a full RP-initiated logout, not `removeUser()`.
+Dropping only the local token leaves the Keycloak SSO session alive, so the next sign-in returns
+the same user with no login form — and switching between alice and bob is the entire point.
+
+---
+
 ## 6. Open risks
 
 All four original risks are resolved. Recorded here with how.
