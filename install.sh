@@ -37,6 +37,10 @@ ok()   { printf '  %s✓%s %s\n' "$GRN" "$RST" "$1"; }
 bad()  { printf '  %s✗%s %s\n' "$RED" "$RST" "$1"; FAILED=$((FAILED+1)); }
 todo() { printf '  %s!%s %s\n' "$YEL" "$RST" "$1"; PENDING=$((PENDING+1)); }
 hint() { printf '    %s%s%s\n' "$DIM" "$1" "$RST"; }
+# Reported but not counted: for tooling only one of the three clients needs. Both FAILED and
+# PENDING exit 1, and a missing Rust toolchain must not fail the preflight for someone building
+# the Python or JVM path.
+note() { printf '  %s·%s %s\n' "$DIM" "$RST" "$1"; }
 head2(){ printf '\n%s%s%s\n' "$BOLD" "$1" "$RST"; }
 
 # ---------------------------------------------------------------- privileged --
@@ -137,6 +141,44 @@ if have python3; then
   fi
 else
   bad "python3 not found"
+fi
+
+# ------------------------------------------------------- Rust client (optional) --
+#
+# One of three clients, and nothing else in the stack depends on it: `make up`, `make demo` and
+# `make test` all run without any of this. So these are reported and never counted.
+#
+head2 "Rust client (optional -- make client-rust / test-rust / demo-rust)"
+
+if have cargo; then
+  ok "cargo $(cargo --version 2>/dev/null | awk '{print $2}')"
+else
+  note "cargo not found"
+  hint "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+fi
+
+if have rustc; then
+  ok "rustc $(rustc --version 2>/dev/null | awk '{print $2}')"
+else
+  note "rustc not found (rustup installs it alongside cargo)"
+fi
+
+# protoc is a BUILD dependency of the spark-connect-rs crate: its build.rs compiles Spark's .proto
+# files through tonic-build. Without it `cargo test` fails inside the build script, and the error
+# names the crate and the .proto files but never protoc itself -- which is a long way to go to
+# learn you are missing a package.
+if have protoc; then
+  PROTOC_VER="$(protoc --version 2>/dev/null | awk '{print $2}')"
+  # build.rs passes --experimental_allow_proto3_optional, which exists from 3.12 on.
+  if version_ge "${PROTOC_VER:-0}" "3.12"; then
+    ok "protoc $PROTOC_VER"
+  else
+    note "protoc $PROTOC_VER is older than 3.12, which spark-connect-rs needs for proto3 optional"
+    hint "sudo apt install protobuf-compiler"
+  fi
+else
+  note "protoc not found -- spark-connect-rs compiles Spark's .proto files at build time"
+  hint "sudo apt install protobuf-compiler"
 fi
 
 # ----------------------------------------------------------------- /etc/hosts --
