@@ -17,7 +17,7 @@ JAR_SRC := server/target/spark-connect-propagation-0.1.0.jar
 JAR_DST := docker/spark/jars/spark-connect-propagation-0.1.0.jar
 
 .DEFAULT_GOAL := help
-.PHONY: help install jar client-jar client-rust build up bootstrap demo demo-jvm demo-rust test-unit test test-jvm test-jvm-it test-rust test-rust-it test-container logs cid ps down clean
+.PHONY: help install jar client-jar client-rust build up bootstrap seed ontop-metadata demo demo-jvm demo-rust demo-sparql test-unit test test-jvm test-jvm-it test-rust test-rust-it test-container logs cid ps down clean
 
 help: ## Show this help
 	@echo "Spark Connect propagation PoC"
@@ -58,6 +58,7 @@ up: ## Start the whole stack and wait until Spark Connect is accepting connectio
 	@echo "  Keycloak       http://keycloak:8080       (admin/admin)"
 	@echo "  Polaris        http://polaris:8181"
 	@echo "  MinIO console  http://minio:9001          (minio_root/m1n1opwd)"
+	@echo "  Ontop SPARQL   http://localhost:8090      (VKG endpoint; needs 'make seed' first)"
 	@echo "  Marquez        http://localhost:3001      (lineage UI)"
 	@echo "  OpenLineage    http://localhost:5000/api/v1/lineage"
 	@echo "  Spark master   http://spark-master:8082"
@@ -67,6 +68,18 @@ up: ## Start the whole stack and wait until Spark Connect is accepting connectio
 bootstrap: ## Re-run the Polaris catalog/principal/grant bootstrap (idempotent)
 	@$(COMPOSE) run --rm polaris-setup
 
+seed: ## Create the demo tables as alice, through Spark Connect
+	@$(COMPOSE) --profile tools build client
+	@$(COMPOSE) run --rm client /work/tests/scenario.py
+
+ontop-metadata: ## Re-extract docker/ontop/db-metadata.json from the live tables (as alice)
+	@test -s docker/ontop/db-metadata.json.tmp && rm -f docker/ontop/db-metadata.json.tmp || true
+	@$(COMPOSE) run --rm --no-deps --entrypoint /opt/ontop/extract-db-metadata.sh ontop \
+	  > docker/ontop/db-metadata.json.tmp
+	@python3 -m json.tool docker/ontop/db-metadata.json.tmp > /dev/null
+	@mv docker/ontop/db-metadata.json.tmp docker/ontop/db-metadata.json
+	@echo "wrote docker/ontop/db-metadata.json -- rebuild the image to pick it up"
+
 demo: ## Interactive two-user walkthrough (device flow; opens a browser URL)
 	@cd client && uv run python ../demo/demo.py
 
@@ -75,6 +88,9 @@ demo-jvm: client-jar ## The same walkthrough, driven by the JVM client instead o
 
 demo-rust: ## The same walkthrough again, driven by the Rust client
 	@cargo run -q --manifest-path demo/rust/Cargo.toml
+
+demo-sparql: ## The same two users asking the same questions in SPARQL, through Ontop
+	@cd client && uv run python ../demo/sparql.py
 
 test-unit: ## Fast client unit tests -- no stack, no docker, no network
 	@cd client && uv run pytest ../tests/test_client_unit.py -q

@@ -8,7 +8,7 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-**Status:** complete and verified. 29 end-to-end checks against the live stack, plus 83 unit tests.
+**Status:** complete and verified. 35 end-to-end checks against the live stack, plus 92 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and
 [TODO.md](TODO.md) for the full decision record.
 
@@ -26,6 +26,7 @@ See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstre
 | **Session integrity** | A client claiming another user's `user_id`/`session_id` is refused — a gap Spark Connect leaves open by default |
 | **The same identity in a UI** | The Apache Polaris console signs in as alice or bob through the same realm, and renders only what that user may see |
 | **Three client languages** | The Python, JVM and Rust clients present the same headers and client-minted operation ids to one unchanged server |
+| **The same identity in SPARQL** | An Ontop VKG endpoint answers SPARQL over the same tables, and Polaris refuses bob the same namespace — because the query reaches Spark Connect as bob |
 
 ## Quickstart
 
@@ -36,12 +37,14 @@ make up          # starts the stack and waits for it
 make demo        # interactive two-user walkthrough (device flow, opens a browser URL)
 make demo-jvm    # the same walkthrough, driven by the JVM client
 make demo-rust   # ... and by the Rust client
+make seed        # create the demo tables (what the SPARQL endpoint waits for)
+make demo-sparql # the same two users asking the same questions in SPARQL, through Ontop
 make test        # full suite on the host
 ```
 
 `make test-unit` runs the client unit tests with no stack, no docker and no network.
 `make test-container` runs the full suite inside the compose network, needing no host setup at
-all. Between them: 26 Python unit tests, 19 end-to-end, 15 Java plugin tests via `make jar`, and
+all. Between them: 26 Python unit tests, 25 end-to-end, 24 Java plugin tests via `make jar`, and
 28 JVM client tests via `make test-jvm` and 14 Rust ones via `make test-rust` (each has five more
 that run against the stack, with `make test-jvm-it` and `make test-rust-it`).
 
@@ -132,16 +135,17 @@ column looks the way it does is in [FINDINGS.md](FINDINGS.md) §5, §12 and §13
 ```
 install.sh              toolchain and /etc/hosts preflight; prompts before sudo
 Makefile                install / build / up / demo{,-jvm,-rust} / test{,-jvm,-rust}{,-it} / cid / down
-compose.yaml            keycloak, minio (+audit sink), polaris (+console), marquez, spark master/worker/connect
+compose.yaml            keycloak, minio (+audit sink), polaris (+console), marquez, ontop, spark master/worker/connect
 docker/keycloak/        realm: alice, bob, four clients, audience and claim mappers
 docker/polaris/         idempotent bootstrap: catalog, namespaces, principals, grants
 docker/polaris-console/ builds the Apache Polaris web console from pinned upstream source
 docker/spark/           image, spark-defaults.conf, log4j2.properties, role entrypoint
+docker/ontop/           Ontop VKG built from a fork that carries the caller's identity; R2RML mapping
 server/                 the Java plugin (one Maven module, one jar)
 client/                 the PySpark client package
 client-jvm/             the same client for the JVM, in Java (Maven)
 client-rust/            the same client in Rust, on the spark-connect-rs crate (Cargo)
-demo/                   the walkthrough: demo.py, and java/ + rust/ for the same thing again
+demo/                   the walkthrough: demo.py, sparql.py, and java/ + rust/ for the same thing again
 tests/                  the verification suite
 docs/                   screenshots the README points at
 ```
@@ -321,6 +325,49 @@ trace. Two things make it work and are easy to miss: Polaris needs CORS opened f
 browser origin (Quarkus defaults it off), and the console's config is injected at container start
 into `window.APP_CONFIG`, so one image can be pointed anywhere without a rebuild.
 
+## A SPARQL endpoint over the same tables
+
+`make seed && make demo-sparql` asks the same two questions of the same two users, in SPARQL:
+
+```
+[1] alice asks for the events  (shared: both users may read it)
+     {event=http://example.org/poc/event/1 kind=login}, ...
+[3] alice asks for the salaries  (restricted: only alice may read it)
+     {name=alice salary=100}, {name=bob salary=90}
+[4] bob asks for the salaries -- same endpoint, same mapping, same query
+     refused: HTTP 500
+     ... Forbidden: Principal 'bob' ... is not authorized ...
+```
+
+The refusal is Polaris's. Nothing in the R2RML mapping mentions bob, and Ontop applies no rule of
+its own: the mapping offers him exactly the triples it offers alice. What differs is the token on
+the connection the query ran over.
+
+**The endpoint holds no credential for the data at all.** Not a service account, not a token in a
+file — nothing. The table definitions it needs to compile SPARQL into SQL are pinned in
+`db-metadata.json`, so it never introspects and never has to be anybody. Every row that comes back
+was authorised against the caller's own token, and a request without one is refused because there
+is nothing for it to borrow.
+
+### Why this needed a fork
+
+Ontop knows who asked — its `QueryContext` carries the request's headers, user, roles and groups.
+What it could not do is tell the database: the JDBC connection comes from a process-wide pool built
+once from `jdbc.url`, so every SPARQL caller would reach Spark Connect as the endpoint, and
+"who read the salaries" would answer "Ontop".
+
+[`larsw/ontop@version5-auth-context`](https://github.com/larsw/ontop/tree/version5-auth-context)
+closes that, in three opt-in pieces: the caller's `QueryContext` reaches connection acquisition; a
+`ContextPropagatingJDBCConnectionPool` builds each request's JDBC URL from it; and
+`ontop.queryIdHttpHeader` lets Ontop adopt the caller's correlation ID as its query id, so one UUID
+still covers the whole chain. Details, and what makes it work on this side — the Spark Connect JDBC
+driver turns unrecognised URL parameters into gRPC metadata, which is exactly where the propagation
+plugin looks — are in [docker/ontop/README.md](docker/ontop/README.md).
+
+The tables themselves are created by alice through Spark Connect, which is itself part of what
+this PoC demonstrates, so a fresh stack needs `make seed` before the endpoint has anything to
+answer with.
+
 ## Lineage, and where it collides with this design
 
 The stack runs OpenLineage's Spark listener, reporting to [Marquez](https://marquezproject.ai) at
@@ -422,6 +469,7 @@ what the page tells you if you get it wrong.
 | Polaris | http://polaris:8181 |
 | **Polaris console** | **[http://localhost:3000](http://localhost:3000)** — localhost, never the service name ([why](#the-polaris-console)) |
 | MinIO console | http://minio:9001 |
+| **Ontop SPARQL** | **[http://localhost:8090](http://localhost:8090)** — `/sparql` wants `Authorization: Bearer <token>` |
 | Marquez (lineage UI) | [http://localhost:3001](http://localhost:3001) |
 | OpenLineage API (Marquez) | http://localhost:5000/api/v1/lineage — where the Spark listener posts; admin on :5001 |
 | Spark master | http://spark-master:8082 |

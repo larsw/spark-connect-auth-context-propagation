@@ -164,6 +164,34 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
       this.method = method;
     }
 
+    /**
+     * Where the RPCs Spark answers inline get their identity.
+     *
+     * <p>A unary call's service method runs synchronously inside this callback, so binding the
+     * identity to this thread here covers everything AnalyzePlan does -- including resolving a
+     * relation, which calls the catalog. ExecutePlan passes through as well and is unaffected: it
+     * hands the work to an ExecutionThread, which finds the identity through its job tag as before.
+     */
+    @Override
+    public void onHalfClose() {
+      if (closed) {
+        return;
+      }
+      try (PropagatedIdentityHolder.Scope scope =
+              PropagatedIdentityHolder.bindToCurrentThread(identity)) {
+        org.slf4j.MDC.put(MDC_CORRELATION_ID, correlationId);
+        if (identity.principalName() != null) {
+          org.slf4j.MDC.put(MDC_PRINCIPAL, identity.principalName());
+        }
+        try {
+          super.onHalfClose();
+        } finally {
+          org.slf4j.MDC.remove(MDC_CORRELATION_ID);
+          org.slf4j.MDC.remove(MDC_PRINCIPAL);
+        }
+      }
+    }
+
     @Override
     public void onMessage(ReqT message) {
       if (closed) {
