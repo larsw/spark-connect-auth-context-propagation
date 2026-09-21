@@ -12,6 +12,12 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 
+# Node / bun (the SPARQL console). bun.lock IS committed, so the image builds reproducibly.
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
 # Local state
 .env
 docker/spark/jars/*.jar
@@ -20,6 +26,9 @@ docker/spark/jars/*.jar
 # Editors
 .idea/
 .vscode/
+
+# Browser-automation scratch (snapshots, console dumps) from driving the consoles.
+.playwright-mcp/
 
 # Git worktrees created by tooling; never part of the project tree.
 .claude/worktrees/

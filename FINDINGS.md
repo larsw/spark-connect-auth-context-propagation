@@ -567,3 +567,36 @@ name.
 The endpoint here therefore pins its table definitions in a committed `db-metadata.json` and
 introspects only when a human runs `make ontop-metadata`. Which is the better answer anyway: it
 holds no credential at all.
+
+## 17. Three small things about putting YASGUI in a modern Vite build
+
+Not identity, just the friction of assembling the console in §16's stack. Versions: Vite 8.3,
+bun 1.3, YASGUI 4.2.28, Blueprint 6.20, React 19.3, React Router 8.4.
+
+**Vite 8 minifies CSS with LightningCSS, which refuses YASGUI's stylesheet.** YASGUI bundles
+DataTables, which still carries an Internet Explorer star hack:
+
+```
+.dataTable thead .sorting_desc_disabled{cursor:pointer;*cursor:hand;...}
+```
+
+Modern browsers ignore `*cursor`; LightningCSS treats it as a syntax error and fails the build
+with `Unexpected token Semicolon`. `css.lightningcss.errorRecovery: true` strips those
+declarations and leaves everything else alone. Worth knowing before concluding the dependency is
+broken, because the error names neither YASGUI nor DataTables.
+
+**`build.rollupOptions.output.manualChunks` as an object is gone.** Vite 8 bundles with rolldown,
+which accepts only the function form and otherwise fails at config time with
+`TypeError: manualChunks is not a function` — from inside rolldown, with no mention of the option
+being deprecated. `output.advancedChunks.groups` is the replacement; not splitting at all is fine
+too, which is what this console does.
+
+**`requestConfig.headers` takes a function, and that is the whole integration.** YASQE's
+`RequestConfig<Y>` types nearly every field as `T | ((yasqe: Y) => T)`, evaluated per request. An
+OIDC access token lives five minutes and is renewed silently, and a correlation ID has to be
+minted per query; capturing either in an object at construction time gives a console that works
+for exactly one query and then quietly sends a stale token.
+
+For completeness, the versions all agree on React 19: Blueprint 6 declares `react: 18 || 19`,
+React Router 8 requires `>=19.2.7`, and YASGUI declares no peer at all because it is vanilla TS
+that takes a DOM element.

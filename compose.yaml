@@ -206,6 +206,44 @@ services:
       timeout: 3s
       retries: 12
 
+  # ------------------------------------------------------- SPARQL console --
+  # A browser front end for the Ontop endpoint: React + React Router + YASGUI, Blueprint for the
+  # widgets, built with bun and Vite. It signs in through the same realm as everything else and
+  # sends the user's own token to /sparql, so the answers it shows are the ones Polaris is willing
+  # to give *that* user.
+  #
+  # Like the Polaris console, it holds no secret: a public OIDC client, static files, and a token
+  # that belongs to whoever is at the keyboard.
+  sparql-console:
+    build:
+      context: ./sparql-console
+    image: spark-connect-propagation/sparql-console:0.1.0
+    restart: unless-stopped
+    depends_on:
+      ontop:
+        condition: service_started
+    ports:
+      # 3002 on the host: 3000 is the Polaris console and 3001 is Marquez.
+      - "3002:80"
+    environment:
+      # NOTE: resolved by the BROWSER, not by this container. See sparql-console/entrypoint.sh.
+      VITE_SPARQL_ENDPOINT: "http://localhost:8090/sparql"
+      VITE_OIDC_ISSUER_URL: "http://keycloak:8080/realms/spark"
+      VITE_OIDC_CLIENT_ID: "sparql-console"
+      # localhost, and NOT the service name: PKCE S256 needs crypto.subtle, which browsers expose
+      # only in a secure context, and that test is on the literal hostname. Same trap as the
+      # Polaris console -- see its comment above.
+      VITE_OIDC_REDIRECT_URI: "http://localhost:3002/auth/callback"
+      VITE_OIDC_SCOPE: "openid profile email"
+      VITE_CORRELATION_HEADER: "x-correlation-id"
+    healthcheck:
+      # 127.0.0.1, not localhost: busybox wget resolves localhost to ::1 first and nginx here
+      # listens on IPv4 only.
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
   # ------------------------------------------------------- OpenLineage / Marquez --
   # Where the Spark listener's lineage events land. Marquez is the OpenLineage reference
   # implementation: the API ingests events, the web UI draws the graph.
@@ -337,6 +375,7 @@ services:
       POLARIS_CONSOLE_URL: "http://polaris-console"
       # Same reasoning: 8090 is only the host-published port.
       ONTOP_URL: "http://ontop:8080"
+      SPARQL_CONSOLE_URL: "http://sparql-console"
       CONNECT_SHARED_SECRET: "${CONNECT_SHARED_SECRET:-poc-shared-secret}"
     volumes:
       - ./client:/work/client:ro

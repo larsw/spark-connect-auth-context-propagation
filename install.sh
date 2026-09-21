@@ -222,7 +222,8 @@ port_busy() { ss -ltn "sport = :$1" 2>/dev/null | tail -n +2 | grep -q . ; }
 
 for spec in "8080 keycloak" "8181 polaris" "3000 polaris-console" "9000 minio" "9001 minio-console" \
             "15002 spark-connect" "4040 spark-ui" "7077 spark-master" "8081 spark-worker-ui" \
-            "3001 marquez-web" "5000 marquez-api" "5001 marquez-admin" "8090 ontop"; do
+            "3001 marquez-web" "5000 marquez-api" "5001 marquez-admin" "8090 ontop" \
+            "3002 sparql-console"; do
   set -- $spec
   if port_busy "$1"; then
     todo "port $1 ($2) is already in use"
