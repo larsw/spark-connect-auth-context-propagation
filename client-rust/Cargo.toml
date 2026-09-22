@@ -2,7 +2,7 @@
 name = "spark-connect-propagation-client"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.81"
+rust-version = "1.85"
 license = "Apache-2.0"
 description = "Spark Connect client that threads a user token and a correlation ID through to the server"
 repository = "https://github.com/larsw/spark-connect-auth-context-propagation"
@@ -12,13 +12,24 @@ repository = "https://github.com/larsw/spark-connect-auth-context-propagation"
 # server, since the Connect protocol is backwards compatible for what this exercises.
 spark-connect-rs = "0.0.2"
 
-# OAuth over HTTP. rustls rather than native-tls so there is no OpenSSL system dependency;
+# OAuth over HTTP. rustls rather than native-tls so there is no OpenSSL to link against;
 # the sandbox issuer is plain HTTP, but a real one would not be.
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+#
+# Note what reqwest 0.13's `rustls` feature means, because it is not what 0.12's `rustls-tls`
+# meant: it turns on rustls-platform-verifier, so the trust anchors come from the OS store
+# (/etc/ssl/certs) rather than from a webpki-roots bundle compiled into the binary. An image
+# without ca-certificates therefore has an empty trust store, and Client::new() panics when
+# the backend will not initialise. It also selects aws-lc-rs over ring, so building needs a
+# C toolchain and cmake.
+#
+# `form` is required -- 0.13 moved RequestBuilder::form behind it. `json` and `charset` are
+# not: nothing calls .json(), and .text() only needs charset to honour a Content-Type the
+# token endpoint always states as UTF-8 JSON.
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "form"] }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-base64 = "0.22"
+base64 = "0.23.1"
 uuid = { version = "1", features = ["v4"] }
 thiserror = "2"
 tokio = { version = "1", features = ["sync", "time"] }

@@ -17,6 +17,26 @@ use tokio::sync::Mutex;
 /// Refresh this long before the server thinks the token expires.
 const EXPIRY_MARGIN: Duration = Duration::from_secs(30);
 
+/// Cap on one call to the authorization server.
+///
+/// The device flow polls until its own deadline, but a request that never answers would sit
+/// there past it, because the deadline is only checked between polls.
+const HTTP_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// One client per provider, built once.
+///
+/// `Client::new()` per request would give every request its own empty connection pool -- and
+/// since reqwest 0.13 verifies against the OS trust store rather than a bundled root set, it
+/// would also reload and reparse /etc/ssl/certs each time. The device flow polls the token
+/// endpoint every few seconds for up to ten minutes, so that is a lot of both.
+fn http_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .timeout(HTTP_TIMEOUT)
+        .build()
+        // The same failure `Client::new()` panics on, and no more recoverable here.
+        .expect("could not initialise the HTTPS client")
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum PropagationError {
     #[error("{error}{}", .description.as_deref().map(|d| format!(": {d}")).unwrap_or_default())]
@@ -136,10 +156,11 @@ fn now_seconds() -> f64 {
 
 /// Form POST to a token endpoint, parsing the JSON reply.
 async fn post_form(
+    http: &reqwest::Client,
     url: &str,
     form: &[(&str, &str)],
 ) -> Result<serde_json::Value, PropagationError> {
-    let response = reqwest::Client::new().post(url).form(form).send().await?;
+    let response = http.post(url).form(form).send().await?;
     let status = response.status();
     let body = response.text().await?;
 
@@ -174,6 +195,7 @@ pub struct PasswordGrantTokenProvider {
     client_id: String,
     username: String,
     password: String,
+    http: reqwest::Client,
     cached: Mutex<Option<Tokens>>,
 }
 
@@ -184,6 +206,7 @@ impl PasswordGrantTokenProvider {
             client_id: client_id.to_string(),
             username: username.to_string(),
             password: password.to_string(),
+            http: http_client(),
             cached: Mutex::new(None),
         }
     }
@@ -198,6 +221,7 @@ impl TokenProvider for PasswordGrantTokenProvider {
             }
             if let Some(refresh) = tokens.refresh_token.as_deref() {
                 match post_form(
+                    &self.http,
                     &self.endpoints.token(),
                     &[
                         ("grant_type", "refresh_token"),
@@ -222,6 +246,7 @@ impl TokenProvider for PasswordGrantTokenProvider {
         }
 
         let payload = post_form(
+            &self.http,
             &self.endpoints.token(),
             &[
                 ("grant_type", "password"),
@@ -248,6 +273,7 @@ pub struct DeviceCodeTokenProvider {
     label: String,
     cache_dir: PathBuf,
     prompt: Box<dyn Fn(&str) + Send + Sync>,
+    http: reqwest::Client,
     cached: Mutex<Option<Tokens>>,
 }
 
@@ -268,6 +294,7 @@ impl DeviceCodeTokenProvider {
             label: label.to_string(),
             cache_dir,
             prompt: Box::new(|line| println!("{line}")),
+            http: http_client(),
             cached: Mutex::new(None),
         }
     }
@@ -300,7 +327,11 @@ impl DeviceCodeTokenProvider {
             return;
         };
         let file = self.cache_file();
-        if std::fs::write(&file, json).is_ok() {
+        // Created 0600 rather than written and then chmod'd: plain fs::write applies the umask,
+        // so a live refresh token would sit there world-readable until the chmod landed. The
+        // chmod stays for the case where the file already existed with looser permissions --
+        // the create mode only applies when the file is actually created.
+        if write_private(&file, &json).is_ok() {
             restrict_permissions(&file);
         }
     }
@@ -310,6 +341,7 @@ impl DeviceCodeTokenProvider {
         // the cache on disk still looks usable -- or the network blinked. Both mean "go back to a
         // device login", not "fail".
         let payload = post_form(
+            &self.http,
             &self.endpoints.token(),
             &[
                 ("grant_type", "refresh_token"),
@@ -324,6 +356,7 @@ impl DeviceCodeTokenProvider {
 
     async fn device_flow(&self) -> Result<Tokens, PropagationError> {
         let start = post_form(
+            &self.http,
             &self.endpoints.device_authorization(),
             &[("client_id", &self.client_id), ("scope", "openid profile")],
         )
@@ -362,6 +395,7 @@ impl DeviceCodeTokenProvider {
         while SystemTime::now() < deadline {
             tokio::time::sleep(interval).await;
             match post_form(
+                &self.http,
                 &self.endpoints.token(),
                 &[
                     ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
@@ -422,6 +456,24 @@ pub(crate) fn default_cache_dir() -> PathBuf {
         .or_else(|| std::env::var("HOME").ok().map(|h| Path::new(&h).join(".cache")))
         .unwrap_or_else(|| PathBuf::from(".cache"));
     base.join("spark-connect-poc")
+}
+
+#[cfg(unix)]
+fn write_private(file: &Path, contents: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(file)?
+        .write_all(contents.as_bytes())
+}
+
+#[cfg(not(unix))]
+fn write_private(file: &Path, contents: &str) -> std::io::Result<()> {
+    std::fs::write(file, contents)
 }
 
 #[cfg(unix)]
