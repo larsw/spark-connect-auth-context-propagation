@@ -14,12 +14,18 @@ __pycache__/
 
 # Local state
 .env
+# Compose merges this on top of compose.yaml automatically, so a committed copy would
+# silently publish the driver's JDWP port for everyone. It is local debugging only.
+compose.override.yaml
 docker/spark/jars/*.jar
 .cache/
 
 # Editors
 .idea/
 .vscode/
+# JetBrains run configurations. Useful locally -- see the comments in server/.run and
+# demo/java/.run -- but they name absolute JDK paths and this machine's service ports.
+.run/
 
 # Git worktrees created by tooling; never part of the project tree.
 .claude/worktrees/
