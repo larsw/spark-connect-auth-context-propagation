@@ -16,6 +16,8 @@ spark-connect-rs = "0.0.2"
 # the sandbox issuer is plain HTTP, but a real one would not be.
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
+# Already in the tree through reqwest; named here for RFC 6749's client_secret_basic encoding.
+form_urlencoded = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.22"

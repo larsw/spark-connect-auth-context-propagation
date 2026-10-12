@@ -1,9 +1,10 @@
 //! Token acquisition.
 //!
 //! Deliberately pluggable, because how a user proves who they are is orthogonal to the thing this
-//! PoC is about. Three implementations, mirroring the other two clients:
+//! PoC is about. Four implementations, mirroring the other two clients:
 //!
 //! * [`DeviceCodeTokenProvider`] -- the real CLI experience (RFC 8628).
+//! * [`ClientCredentialsTokenProvider`] -- for a workload with no user behind it (RFC 6749 §4.4).
 //! * [`PasswordGrantTokenProvider`] -- used by the tests, so they stay headless.
 //! * [`StaticTokenProvider`] -- a fixed string, for tests that want a specific or a bad token.
 
@@ -11,6 +12,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
@@ -139,7 +141,20 @@ async fn post_form(
     url: &str,
     form: &[(&str, &str)],
 ) -> Result<serde_json::Value, PropagationError> {
-    let response = reqwest::Client::new().post(url).form(form).send().await?;
+    post_form_as(url, form, None).await
+}
+
+/// As [`post_form`], authenticating the client with an `Authorization` header when given one.
+async fn post_form_as(
+    url: &str,
+    form: &[(&str, &str)],
+    authorization: Option<&str>,
+) -> Result<serde_json::Value, PropagationError> {
+    let mut request = reqwest::Client::new().post(url).form(form);
+    if let Some(value) = authorization {
+        request = request.header(reqwest::header::AUTHORIZATION, value);
+    }
+    let response = request.send().await?;
     let status = response.status();
     let body = response.text().await?;
 
@@ -166,6 +181,72 @@ async fn post_form(
         });
     }
     Ok(parsed)
+}
+
+/// The `Authorization` value for `client_secret_basic` (RFC 6749 §2.3.1).
+///
+/// Both halves are form-urlencoded *before* the pair is base64'd, which is why this is not
+/// reqwest's `basic_auth`. Skipping that step works until a client id holds a `:` or a secret holds
+/// a `%` or a `+`, and then fails as `invalid_client` with nothing to say why.
+fn client_secret_basic(client_id: &str, client_secret: &str) -> String {
+    let encode = |raw: &str| form_urlencoded::byte_serialize(raw.as_bytes()).collect::<String>();
+    let pair = format!("{}:{}", encode(client_id), encode(client_secret));
+    format!(
+        "Basic {}",
+        base64::engine::general_purpose::STANDARD.encode(pair)
+    )
+}
+
+/// OAuth 2.0 client credentials grant (RFC 6749 §4.4) -- for a job with no user behind it.
+///
+/// The token is the client's own: Keycloak issues it to the client's service account, so that
+/// account is what the server propagates and what Polaris authorises, by its own grants. Nothing is
+/// cached on disk and no refresh token is used (§4.4.3 advises servers not to issue one): a stale
+/// token is replaced by running the grant again, which needs only the secret in hand.
+pub struct ClientCredentialsTokenProvider {
+    endpoints: Endpoints,
+    client_id: String,
+    client_secret: String,
+    scope: Option<String>,
+    cached: Mutex<Option<Tokens>>,
+}
+
+impl ClientCredentialsTokenProvider {
+    pub fn new(endpoints: Endpoints, client_id: &str, client_secret: &str) -> Self {
+        Self {
+            endpoints,
+            client_id: client_id.to_string(),
+            client_secret: client_secret.to_string(),
+            scope: None,
+            cached: Mutex::new(None),
+        }
+    }
+
+    /// Ask for this scope. Some issuers insist on one; Keycloak does not.
+    pub fn with_scope(mut self, scope: &str) -> Self {
+        self.scope = Some(scope.to_string());
+        self
+    }
+}
+
+impl TokenProvider for ClientCredentialsTokenProvider {
+    async fn token(&self) -> Result<String, PropagationError> {
+        let mut cached = self.cached.lock().await;
+        if let Some(tokens) = cached.as_ref().filter(|tokens| tokens.fresh()) {
+            return Ok(tokens.access_token.clone());
+        }
+
+        let mut form = vec![("grant_type", "client_credentials")];
+        if let Some(scope) = self.scope.as_deref() {
+            form.push(("scope", scope));
+        }
+        let authorization = client_secret_basic(&self.client_id, &self.client_secret);
+        let payload = post_form_as(&self.endpoints.token(), &form, Some(&authorization)).await?;
+        let tokens = Tokens::from_response(&payload)?;
+        let access = tokens.access_token.clone();
+        *cached = Some(tokens);
+        Ok(access)
+    }
 }
 
 /// Direct access grant. Used by the tests, so they stay headless.
@@ -580,5 +661,164 @@ mod tests {
         let id = crate::new_correlation_id();
         assert_eq!(uuid::Uuid::parse_str(&id).unwrap().get_version_num(), 4);
         assert_ne!(crate::new_operation_id(), crate::new_operation_id());
+    }
+
+    // ------------------------------------------------------------- client credentials --
+
+    /// What one request to the fake token endpoint carried.
+    #[derive(Debug)]
+    struct Seen {
+        authorization: Option<String>,
+        form: HashMap<String, String>,
+    }
+
+    /// A loopback token endpoint that records each request, so the wire itself is checked. Every
+    /// reply lives `expires_in` seconds; 0 makes each token stale the moment it arrives.
+    async fn fake_token_endpoint(
+        expires_in: u64,
+    ) -> (Endpoints, std::sync::Arc<std::sync::Mutex<Vec<Seen>>>) {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let recorder = seen.clone();
+        tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                let mut raw = Vec::new();
+                let mut chunk = [0u8; 4096];
+                // Read the head, then exactly Content-Length bytes of body.
+                let (head, body) = loop {
+                    let n = socket.read(&mut chunk).await.unwrap();
+                    raw.extend_from_slice(&chunk[..n]);
+                    let text = String::from_utf8_lossy(&raw).to_string();
+                    if let Some((head, body)) = text.split_once("\r\n\r\n") {
+                        let length = head
+                            .lines()
+                            .find_map(|l| {
+                                l.to_ascii_lowercase()
+                                    .strip_prefix("content-length:")
+                                    .map(|v| v.trim().parse::<usize>().unwrap())
+                            })
+                            .unwrap_or(0);
+                        if body.len() >= length {
+                            break (head.to_string(), body.to_string());
+                        }
+                    }
+                };
+                let authorization = head.lines().find_map(|line| {
+                    let (name, value) = line.split_once(':')?;
+                    name.eq_ignore_ascii_case("authorization")
+                        .then(|| value.trim().to_string())
+                });
+                let form = form_urlencoded::parse(body.as_bytes())
+                    .into_owned()
+                    .collect();
+                let count = {
+                    let mut seen = recorder.lock().unwrap();
+                    seen.push(Seen {
+                        authorization,
+                        form,
+                    });
+                    seen.len()
+                };
+                let reply = format!(r#"{{"access_token":"cc-{count}","expires_in":{expires_in}}}"#);
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{reply}",
+                    reply.len()
+                );
+                socket.write_all(response.as_bytes()).await.unwrap();
+            }
+        });
+        // Endpoints appends the token path, which this endpoint does not care about.
+        (
+            Endpoints::new(&format!("http://127.0.0.1:{port}/realms/spark")),
+            seen,
+        )
+    }
+
+    fn decode_basic(header: &str) -> String {
+        let encoded = header.strip_prefix("Basic ").expect("a Basic credential");
+        String::from_utf8(
+            base64::engine::general_purpose::STANDARD
+                .decode(encoded)
+                .unwrap(),
+        )
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn client_credentials_authenticate_with_basic_and_keep_the_secret_out_of_the_body() {
+        let (endpoints, seen) = fake_token_endpoint(300).await;
+        let provider =
+            ClientCredentialsTokenProvider::new(endpoints, "spark-job", "spark-job-secret");
+
+        assert_eq!(provider.token().await.unwrap(), "cc-1");
+
+        let seen = seen.lock().unwrap();
+        assert_eq!(
+            seen[0].form,
+            HashMap::from([("grant_type".to_string(), "client_credentials".to_string())])
+        );
+        assert_eq!(
+            decode_basic(seen[0].authorization.as_deref().unwrap()),
+            "spark-job:spark-job-secret"
+        );
+    }
+
+    #[tokio::test]
+    async fn client_credentials_send_a_scope_only_when_given_one() {
+        let (endpoints, seen) = fake_token_endpoint(300).await;
+        ClientCredentialsTokenProvider::new(endpoints, "svc", "s")
+            .with_scope("api://spark/.default")
+            .token()
+            .await
+            .unwrap();
+
+        assert_eq!(
+            seen.lock().unwrap()[0].form["scope"],
+            "api://spark/.default"
+        );
+    }
+
+    #[tokio::test]
+    async fn client_credentials_reuse_a_fresh_token() {
+        let (endpoints, seen) = fake_token_endpoint(300).await;
+        let provider =
+            ClientCredentialsTokenProvider::new(endpoints, "spark-job", "spark-job-secret");
+
+        assert_eq!(provider.token().await.unwrap(), "cc-1");
+        assert_eq!(provider.token().await.unwrap(), "cc-1");
+        assert_eq!(seen.lock().unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn client_credentials_re_run_the_grant_for_a_stale_token() {
+        let (endpoints, seen) = fake_token_endpoint(0).await;
+        let provider =
+            ClientCredentialsTokenProvider::new(endpoints, "spark-job", "spark-job-secret");
+
+        assert_eq!(provider.token().await.unwrap(), "cc-1");
+        assert_eq!(provider.token().await.unwrap(), "cc-2");
+        let grants: Vec<_> = seen
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|s| s.form["grant_type"].clone())
+            .collect();
+        assert_eq!(grants, ["client_credentials", "client_credentials"]);
+    }
+
+    #[test]
+    fn client_secret_basic_encodes_each_half_before_base64() {
+        assert_eq!(
+            decode_basic(&client_secret_basic("spark-job", "spark-job-secret")),
+            "spark-job:spark-job-secret"
+        );
+        // RFC 6749 §2.3.1: form-urlencode each half first, so the server can split and decode.
+        assert_eq!(
+            decode_basic(&client_secret_basic("svc:a", "p%ss w+rd")),
+            "svc%3Aa:p%25ss+w%2Brd"
+        );
     }
 }

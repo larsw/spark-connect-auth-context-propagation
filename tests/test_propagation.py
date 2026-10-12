@@ -67,6 +67,22 @@ def test_alice_reads_restricted_but_bob_is_forbidden(alice, bob):
     assert "bob" in message or "orbidden" in message or "not authorized" in message, message
 
 
+def test_a_service_account_is_authorised_by_its_own_grants(spark_job):
+    """Client credentials: no user behind the token, and still not the server's identity.
+
+    The token belongs to spark-job's service account, which holds the analyst role and so gets
+    bob's grants -- the shared table, and a refusal on the restricted one that Polaris issues to
+    that account by name.
+    """
+    assert spark_job.sql("SELECT count(*) c FROM polaris.shared.events").collect()[0].c == 3
+
+    with pytest.raises(Exception) as caught:
+        spark_job.sql("SELECT * FROM polaris.restricted.salaries").collect()
+
+    message = str(caught.value)
+    assert "service-account-spark-job" in message, message
+
+
 def test_concurrent_users_do_not_leak_into_each_other(alice, bob):
     """D3: the thread bridge is keyed per session, so interleaving must not swap identities.
 

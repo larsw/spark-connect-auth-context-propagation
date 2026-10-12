@@ -57,8 +57,8 @@ mod correlation;
 mod session;
 
 pub use auth::{
-    DeviceCodeTokenProvider, Endpoints, PasswordGrantTokenProvider, PropagationError,
-    StaticTokenProvider, TokenProvider,
+    ClientCredentialsTokenProvider, DeviceCodeTokenProvider, Endpoints, PasswordGrantTokenProvider,
+    PropagationError, StaticTokenProvider, TokenProvider,
 };
 pub use correlation::{new_correlation_id, new_operation_id};
 pub use session::{connect, connect_with, subject_of, ConnectOptions};

@@ -106,6 +106,33 @@ class PropagationIT {
   }
 
   @Test
+  @DisplayName("a client-credentials job is authorised as its own service account")
+  void serviceAccountHasItsOwnGrants() {
+    SparkSession job =
+        PropagatingSession.connect(
+            REMOTE,
+            new ClientCredentialsTokenProvider(
+                new Endpoints(ISSUER),
+                "spark-job",
+                System.getenv().getOrDefault("SPARK_JOB_CLIENT_SECRET", "spark-job-secret")));
+    try {
+      // Its service account holds the analyst role, so it gets bob's grants and bob's refusal.
+      assertEquals(3L, job.sql("SELECT * FROM polaris.shared.events").count());
+
+      Exception refused =
+          assertThrows(
+              Exception.class,
+              () -> job.sql("SELECT * FROM polaris.restricted.salaries").collectAsList());
+      String message = String.valueOf(refused.getMessage());
+      assertTrue(
+          message.contains("service-account-spark-job"),
+          "expected Polaris to refuse the service account by name, got: " + message);
+    } finally {
+      job.stop();
+    }
+  }
+
+  @Test
   @DisplayName("a client with no token is refused at the edge")
   void missingTokenIsRefused() {
     SparkSession anonymous = PropagatingSession.connect(REMOTE, new StaticTokenProvider(""));

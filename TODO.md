@@ -5,7 +5,7 @@ Spark Connect (PySpark client → Java server extensions), have the server excha
 for a downstream credential, and prove it reaches an Apache Polaris catalog and MinIO
 object storage with per-user authorisation.
 
-**Status:** design locked 2026-09-18. **Complete.** All milestones done, all four open risks resolved. 29 end-to-end checks pass against the live stack, plus 83 unit tests (15 Java plugin, 28 JVM client, 14 Rust, 26 Python) that need nothing running.
+**Status:** design locked 2026-09-18. **Complete.** All milestones done, all four open risks resolved. 43 end-to-end checks pass against the live stack (31 Python, 6 JVM, 6 Rust), plus 109 unit tests (24 Java plugin, 34 JVM client, 19 Rust, 32 Python) that need nothing running.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
@@ -25,7 +25,7 @@ without reading §2 first — several were forced by verified upstream facts.
 | 5 | Thread bridge = **job-tag lookup, keyed by operation then session** | Only mechanism that survives the gRPC-thread → ExecutionThread boundary without forking Spark (§2.5). Per-*operation* keying added 2026-09-19, once the client began supplying `operation_id` — see §2.15 |
 | 6 | Correlation ID = **client-minted opaque UUID** → `X-Request-ID` → Polaris | Polaris already ingests this header into its MDC and audit events (§2.7) |
 | 7 | Demo = **two users, divergent grants, run concurrently** | Sequential tests would pass even if per-operation keying were broken |
-| 8 | Token acquisition = **pluggable provider**; device flow default, password grant for tests | Device flow is the real CLI UX; tests must stay headless |
+| 8 | Token acquisition = **pluggable provider**; device flow default, client credentials for jobs, password grant for tests | Device flow is the real CLI UX; a job has no one to sign in; tests must stay headless. Client credentials added 2026-10-12 — see milestone I |
 | 9 | Catalog defined **server-side**, with **vended credentials** | A client that can redefine `spark.sql.catalog.*` makes the auth story decorative |
 | 10 | JWT rides **`x-user-token`**; `Authorization` keeps Spark's **pre-shared key (enabled)** | Spark's built-in interceptor owns `Authorization` (§2.4); demonstrates both layers coexisting |
 | 11 | Validate every RPC; **cache exchange by SHA-256 of inbound JWT**, TTL = `exp − 30s` | Mid-session client refresh then works with zero session state |
@@ -153,6 +153,10 @@ Headers avoid this. This is why decision #4 is correct.
 - Device grant: client attribute `oauth2.device.authorization.grant.enabled=true`
   (`OAuth2DeviceConfig.java:41`); defaults 600s device-code lifespan, 5s poll interval;
   endpoint `…/protocol/openid-connect/auth/device`; returns a refresh token.
+- Client credentials grant (verified 2026-10-12): **no refresh token** (`refresh_expires_in: 0`)
+  and **no `sid`**, yet standard token exchange still accepts the token as a subject. The
+  exchanged token carries `principal_name=service-account-<clientId>` and the service account's
+  realm roles as `principal_roles` — the same mappers, run against the service-account user.
 
 ### 2.11 Spark runtime environment
 - Spark 4.1.3 supports **Java 17/21 only** (`docs/index.md:37`); build targets release 17.
@@ -178,6 +182,9 @@ learn Polaris's numeric principal IDs. That removes the apparent bootstrap circu
 Principal roles come from the token (`quarkus.oidc.roles.role-claim-path=principal_roles`,
 mapped `(.+)` → `PRINCIPAL_ROLE:$1`), but are only *activated* if Polaris has actually
 granted them — so Keycloak realm role names must match Polaris principal role names exactly.
+
+The same goes for a service account: a client-credentials token resolves to the principal
+`service-account-<clientId>`, which Polaris must have been told about like any user.
 
 ### 2.13 Compose `$` escaping is real
 Verified empirically: `"PRINCIPAL_ROLE:$$1"` in `compose.yaml` arrives in the container as
@@ -526,6 +533,33 @@ both the Spark Connect and Polaris logs.
 **One design call worth recording.** Sign out is a full RP-initiated logout, not `removeUser()`.
 Dropping only the local token leaves the Keycloak SSO session alive, so the next sign-in returns
 the same user with no login form — and switching between alice and bob is the entire point.
+
+---
+
+## 5e. Milestone I — the client credentials grant, in all three clients (added 2026-10-12)
+
+- [x] I1 Keycloak client `spark-job`: confidential, service account on, every other flow off, the
+      same `spark-connect` audience mapper as `spark-cli`. Its service-account user is declared in
+      the realm import with realm role `analyst`.
+- [x] I2 Polaris principal `service-account-spark-job`, granted principal role `analyst`, in
+      `bootstrap.sh`, because Polaris resolves principals by name and only knows the ones it has
+      been told about (§2.12).
+- [x] I3 `ClientCredentialsTokenProvider` in Python, Java and Rust: `client_secret_basic` with
+      each half form-urlencoded first (RFC 6749 §2.3.1), optional `scope`, held in memory only, a
+      stale token replaced by re-running the grant.
+- [x] I4 Unit tests in all three against a loopback token endpoint, so the wire is checked rather
+      than mocked: Basic credentials, no secret in the body, scope only when given, a fresh token
+      reused, a stale one re-granted, and the §2.3.1 encoding of awkward ids and secrets.
+- [x] I5 One live check per client: the job reads `shared`, and Polaris refuses it `restricted`
+      by the name `service-account-spark-job`.
+
+**No server change was needed**, which is the result worth having. The interceptor validates the
+token, pins `user_id` to its subject and exchanges it exactly as it does a user's; Polaris
+authorises the account by its own grants. The design never assumed a human was on the other end.
+
+**One design call worth recording.** No disk cache. The device-flow cache saves a person from
+signing in again, and is shared between the three clients for that reason; a job re-runs the grant
+for the cost of one POST, and writing its tokens to a file would only widen where they can leak.
 
 ---
 

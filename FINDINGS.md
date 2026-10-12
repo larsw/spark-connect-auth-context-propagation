@@ -166,6 +166,11 @@ Principal roles arrive from the token via `quarkus.oidc.roles.role-claim-path` m
 `polaris.oidc.principal-roles-mapper`, but are only *activated* if Polaris has granted them. IdP
 role names must match Polaris principal role names exactly.
 
+None of this treats machines differently. A client-credentials token from Keycloak names the
+client's service-account user, `service-account-<clientId>`; it exchanges and validates exactly as
+a person's does, and then needs a Polaris principal of that name, created in advance like any
+other.
+
 ## 9. RFC 8693 `audience` filters; it never adds
 
 Keycloak's own guide is explicit, and it is easy to miss:

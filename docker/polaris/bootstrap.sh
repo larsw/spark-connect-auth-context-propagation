@@ -85,6 +85,10 @@ call "create catalog ${CATALOG}" POST /api/management/v1/catalogs '{
 echo "==> principals (must pre-exist; resolved by name from the principal_name claim)"
 call "principal alice" POST /api/management/v1/principals '{"principal":{"name":"alice"}}'
 call "principal bob"   POST /api/management/v1/principals '{"principal":{"name":"bob"}}'
+# A client-credentials token belongs to the client's service account, and Keycloak names that
+# user service-account-<clientId>. That username is what principal_name carries after the exchange.
+call "principal service-account-spark-job" POST /api/management/v1/principals \
+  '{"principal":{"name":"service-account-spark-job"}}'
 
 echo "==> principal roles (names must match the Keycloak realm roles exactly)"
 call "principal-role data_engineer" POST /api/management/v1/principal-roles '{"principalRole":{"name":"data_engineer"}}'
@@ -92,6 +96,9 @@ call "principal-role analyst"       POST /api/management/v1/principal-roles '{"p
 
 call "alice -> data_engineer" PUT /api/management/v1/principals/alice/principal-roles '{"principalRole":{"name":"data_engineer"}}'
 call "bob   -> analyst"       PUT /api/management/v1/principals/bob/principal-roles   '{"principalRole":{"name":"analyst"}}'
+call "service-account-spark-job -> analyst" \
+  PUT /api/management/v1/principals/service-account-spark-job/principal-roles \
+  '{"principalRole":{"name":"analyst"}}'
 
 echo "==> namespaces (created here so grants below have something to reference;"
 echo "    alice still creates the TABLES herself through Spark Connect)"
@@ -135,8 +142,12 @@ cat <<'SUMMARY'
     bob    realm role analyst -> catalog role shared_reader
            read-only on namespace 'shared'; NO grant on 'restricted'
 
+    service-account-spark-job  (client credentials, client spark-job)
+           realm role analyst -> the same grants as bob
+
     Expected demo outcome:
       both read shared.events            -> OK
       alice reads restricted.salaries    -> OK
       bob   reads restricted.salaries    -> FORBIDDEN from Polaris
+      spark-job reads restricted.salaries -> FORBIDDEN, as bob is
 SUMMARY

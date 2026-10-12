@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import base64
 import concurrent.futures
+import http.server
 import json
+import threading
+import urllib.parse
 import uuid
 
 import pytest
@@ -15,6 +18,7 @@ import pytest
 from spark_connect_propagation import active_correlation_id, correlation_id, new_correlation_id
 from spark_connect_propagation import auth
 from spark_connect_propagation.auth import (
+    ClientCredentialsTokenProvider,
     DeviceCodeTokenProvider,
     Endpoints,
     OAuthError,
@@ -315,3 +319,90 @@ def test_password_grant_falls_back_to_a_full_grant(monkeypatch, failure):
 
     assert provider.token() == "fresh"
     assert grants == ["refresh_token", "password"]
+
+
+# ------------------------------------------------------- client credentials --
+
+
+@pytest.fixture
+def token_endpoint():
+    """A loopback token endpoint that records each request, so the wire itself is checked."""
+    seen = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers["Content-Length"])).decode()
+            seen.append({"authorization": self.headers.get("Authorization"),
+                         "form": dict(urllib.parse.parse_qsl(body))})
+            reply = json.dumps({"access_token": f"cc-{len(seen)}", "expires_in": 300}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(reply)))
+            self.end_headers()
+            self.wfile.write(reply)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    # Endpoints appends /protocol/openid-connect/token, which the handler does not care about.
+    yield Endpoints(f"http://127.0.0.1:{server.server_port}/realms/spark"), seen
+    server.shutdown()
+    server.server_close()
+
+
+def test_client_credentials_authenticates_with_basic_and_keeps_the_secret_out_of_the_body(
+    token_endpoint,
+):
+    endpoints, seen = token_endpoint
+    provider = ClientCredentialsTokenProvider(endpoints, "spark-job", "spark-job-secret")
+
+    assert provider.token() == "cc-1"
+
+    (request,) = seen
+    assert request["form"] == {"grant_type": "client_credentials"}
+    scheme, credentials = request["authorization"].split(" ", 1)
+    assert scheme == "Basic"
+    assert base64.b64decode(credentials).decode() == "spark-job:spark-job-secret"
+
+
+def test_client_credentials_sends_a_scope_only_when_given(token_endpoint):
+    endpoints, seen = token_endpoint
+    ClientCredentialsTokenProvider(endpoints, "svc", "s", scope="api://spark/.default").token()
+
+    assert seen[0]["form"] == {"grant_type": "client_credentials", "scope": "api://spark/.default"}
+
+
+def test_client_credentials_reuses_a_fresh_token_and_re_grants_a_stale_one(token_endpoint):
+    """No refresh token is involved: Keycloak issues none for this grant, and needs none."""
+    endpoints, seen = token_endpoint
+    provider = ClientCredentialsTokenProvider(endpoints, "spark-job", "spark-job-secret")
+
+    assert provider.token() == "cc-1"
+    assert provider.token() == "cc-1"
+    assert len(seen) == 1
+
+    provider._tokens.expires_at = 0.0
+    assert provider.token() == "cc-2"
+    assert [r["form"]["grant_type"] for r in seen] == ["client_credentials"] * 2
+
+
+@pytest.mark.parametrize(
+    "client_id, secret, expected",
+    [
+        ("spark-job", "spark-job-secret", "spark-job:spark-job-secret"),
+        # RFC 6749 §2.3.1: form-urlencode each half first, so the server can split and decode.
+        ("svc:a", "p%ss w+rd", "svc%3Aa:p%25ss+w%2Brd"),
+    ],
+)
+def test_client_secret_basic_encodes_each_half_before_base64(client_id, secret, expected):
+    header = auth._client_secret_basic(client_id, secret)
+
+    assert base64.b64decode(header.removeprefix("Basic ")).decode() == expected
+
+
+def test_the_client_secret_stays_out_of_repr():
+    provider = ClientCredentialsTokenProvider(Endpoints(ISSUER), "spark-job", "spark-job-secret")
+
+    assert "spark-job-secret" not in repr(provider)
