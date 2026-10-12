@@ -1,6 +1,7 @@
 """Thread a user token and a correlation ID through Spark Connect."""
 
 from .auth import (
+    ClientCredentialsTokenProvider,
     DeviceCodeTokenProvider,
     Endpoints,
     OAuthError,
@@ -24,6 +25,7 @@ __all__ = [
     "PropagationInterceptor",
     "TokenProvider",
     "DeviceCodeTokenProvider",
+    "ClientCredentialsTokenProvider",
     "PasswordGrantTokenProvider",
     "StaticTokenProvider",
     "Endpoints",

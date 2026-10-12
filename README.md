@@ -8,7 +8,7 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-**Status:** complete and verified. 40 end-to-end checks against the live stack, plus 92 unit tests.
+**Status:** complete and verified. 43 end-to-end checks against the live stack, plus 109 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and
 [TODO.md](TODO.md) for the full decision record.
 
@@ -26,6 +26,7 @@ See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstre
 | **Session integrity** | A client claiming another user's `user_id`/`session_id` is refused — a gap Spark Connect leaves open by default |
 | **The same identity in a UI** | The Apache Polaris console signs in as alice or bob through the same realm, and renders only what that user may see |
 | **Three client languages** | The Python, JVM and Rust clients present the same headers and client-minted operation ids to one unchanged server |
+| **Jobs with no user** | A workload signs in with the client credentials grant, and Polaris authorises its service account by that account's own grants — refusing it what it refuses bob |
 | **The same identity in SPARQL** | An Ontop VKG endpoint answers SPARQL over the same tables, and Polaris refuses bob the same namespace — because the query reaches Spark Connect as bob |
 | **...and in a browser** | A React/YASGUI console signs in through the same realm and sends the user's own token, so alice and bob get different answers to the same SPARQL |
 
@@ -46,8 +47,8 @@ make test        # full suite on the host
 
 `make test-unit` runs the client unit tests with no stack, no docker and no network.
 `make test-container` runs the full suite inside the compose network, needing no host setup at
-all. Between them: 26 Python unit tests, 30 end-to-end, 24 Java plugin tests via `make jar`, and
-28 JVM client tests via `make test-jvm` and 14 Rust ones via `make test-rust` (each has five more
+all. Between them: 32 Python unit tests, 31 end-to-end, 24 Java plugin tests via `make jar`, and
+34 JVM client tests via `make test-jvm` and 19 Rust ones via `make test-rust` (each has six more
 that run against the stack, with `make test-jvm-it` and `make test-rust-it`).
 
 `install.sh` never runs a privileged command on its own. It prints exactly what it wants to do
@@ -138,7 +139,7 @@ column looks the way it does is in [FINDINGS.md](FINDINGS.md) §5, §12 and §13
 install.sh              toolchain and /etc/hosts preflight; prompts before sudo
 Makefile                install / build / up / demo{,-jvm,-rust} / test{,-jvm,-rust}{,-it} / cid / down
 compose.yaml            keycloak, minio (+audit sink), polaris (+console), marquez, ontop (+console), spark master/worker/connect
-docker/keycloak/        realm: alice, bob, four clients, audience and claim mappers
+docker/keycloak/        realm: alice, bob, a service account, six clients, audience and claim mappers
 docker/polaris/         idempotent bootstrap: catalog, namespaces, principals, grants
 docker/polaris-console/ builds the Apache Polaris web console from pinned upstream source
 docker/spark/           image, spark-defaults.conf, log4j2.properties, role entrypoint
@@ -184,7 +185,9 @@ with correlation_id() as cid:
 
 The channel is built entirely on public PySpark API — `DefaultChannelBuilder`, `add_interceptor`
 and `builder.channelBuilder` — so nothing here is a fork. Token acquisition is behind a
-`TokenProvider` protocol: device flow for humans, password grant so the tests stay headless.
+`TokenProvider` protocol: device flow for humans, client credentials for
+[jobs with no user behind them](#jobs-with-no-user-behind-them), password grant so the tests stay
+headless.
 
 One private seam is used deliberately. PySpark never fills in
 `ExecutePlanRequest.operation_id`, so the server generates an id the client never learns and the
@@ -289,6 +292,48 @@ module inside it, so running it also proves the crate is consumable from outside
 The one visible difference between the three demos: this one mints its correlation ID *before*
 signing anyone in, because the ID has to be in hand when the session is opened. The other two open
 a scope around the queries instead.
+
+### Jobs with no user behind them
+
+All three clients also take a `ClientCredentialsTokenProvider`, for a scheduled job or a pipeline
+that holds a client id and a secret rather than a person at a keyboard:
+
+```python
+ClientCredentialsTokenProvider(Endpoints("http://keycloak:8080/realms/spark"), "spark-job", secret)
+```
+
+```java
+new ClientCredentialsTokenProvider(new Endpoints("http://keycloak:8080/realms/spark"), "spark-job", secret)
+```
+
+```rust
+ClientCredentialsTokenProvider::new(Endpoints::new("http://keycloak:8080/realms/spark"), "spark-job", &secret)
+```
+
+Nothing past the client changes, and nothing needs to. Keycloak issues the token to the client's
+service account, `service-account-spark-job`, so that is the subject the server pins `user_id` to,
+the identity it exchanges, and the principal Polaris authorises by name. The sandbox gives that
+account the `analyst` role, so it reads `shared` and gets the same 403 on `restricted` that bob
+does, addressed to it instead. A workload is a principal like any other, not a way around one —
+which also means Polaris must know it in advance, so `bootstrap.sh` creates it alongside alice and
+bob.
+
+Three details are the same in all three clients:
+
+* **The client authenticates with `client_secret_basic`**, the one method RFC 6749 requires every
+  server to support, and each half is form-urlencoded before the pair is base64'd, as §2.3.1 says.
+  That is why the Rust client does not use reqwest's `basic_auth`, which skips that step: it works
+  until a secret contains a `%` or a `+`, and then fails as `invalid_client` with nothing to say why.
+* **There is no refresh token.** Keycloak issues none for this grant (§4.4.3 advises against it),
+  and none is needed: a stale token is replaced by running the grant again. Nothing is written to
+  disk either. The device-flow cache exists to spare a person a second sign-in; a job has nobody
+  to spare.
+* **`scope` is optional**, and is sent only when given. Keycloak needs none; some issuers, Entra
+  ID among them, insist on one.
+
+In Rust the usual caveat applies: the provider is asked once per `connect`, so a session lasts as
+long as the token it opened with — five minutes in this realm — and a long-running job should open
+sessions as it goes.
 
 ## The Polaris console
 
@@ -473,7 +518,8 @@ line up by eye.
 
 ## Sandbox credentials
 
-`alice`/`alice` and `bob`/`bob` in the `spark` realm; Keycloak admin `admin`/`admin`; MinIO
+`alice`/`alice` and `bob`/`bob` in the `spark` realm, and client `spark-job`/`spark-job-secret`
+for the client credentials grant; Keycloak admin `admin`/`admin`; MinIO
 `minio_root`/`m1n1opwd`; Polaris root `root`/`s3cr3t`. All of it is throwaway.
 
 The quickest place to spend those two logins is the **[Polaris console](http://localhost:3000)** —

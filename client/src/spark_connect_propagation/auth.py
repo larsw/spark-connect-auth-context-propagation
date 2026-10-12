@@ -1,21 +1,24 @@
 """Token acquisition for the PySpark client.
 
 Deliberately pluggable, because how a user proves who they are is orthogonal to the thing this
-PoC is about -- threading that identity through Spark Connect. Two implementations:
+PoC is about -- threading that identity through Spark Connect. Three implementations:
 
 * :class:`DeviceCodeTokenProvider` -- the real CLI experience (RFC 8628). Prints a URL, waits
   for the browser login, then caches and silently refreshes.
+* :class:`ClientCredentialsTokenProvider` -- for a workload with no user behind it (RFC 6749
+  §4.4). The identity propagated is the client's own service account.
 * :class:`PasswordGrantTokenProvider` -- used only by the test suite, so ``make test`` stays
   headless.
 
-Both hand back a *callable* rather than a string, so an expiring token refreshes mid-session
-instead of killing it.
+All of them are asked for a token per call rather than once, so an expiring token is renewed
+mid-session instead of killing it.
 
 Stdlib HTTP only: the client package's dependency list stays at pyspark-client alone.
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import time
@@ -43,10 +46,7 @@ def _post_form(url: str, form: dict[str, str], *, basic_auth: Optional[tuple[str
     request.add_header("Content-Type", "application/x-www-form-urlencoded")
     request.add_header("Accept", "application/json")
     if basic_auth is not None:
-        import base64
-
-        raw = f"{basic_auth[0]}:{basic_auth[1]}".encode()
-        request.add_header("Authorization", "Basic " + base64.b64encode(raw).decode())
+        request.add_header("Authorization", _client_secret_basic(*basic_auth))
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
             return json.loads(response.read().decode())
@@ -57,6 +57,17 @@ def _post_form(url: str, form: dict[str, str], *, basic_auth: Optional[tuple[str
         except ValueError:
             raise RuntimeError(f"{url} returned HTTP {error.code}: {body[:300]}") from error
         raise OAuthError(parsed.get("error", "unknown"), parsed.get("error_description", ""), error.code) from error
+
+
+def _client_secret_basic(client_id: str, client_secret: str) -> str:
+    """The ``Authorization`` value for ``client_secret_basic`` (RFC 6749 §2.3.1).
+
+    Both halves are form-urlencoded *before* the pair is base64'd. Skipping that step works until
+    a client id holds a ``:`` or a secret holds a ``%`` or a ``+``, and then fails as
+    ``invalid_client`` with nothing to say why.
+    """
+    raw = f"{urllib.parse.quote_plus(client_id)}:{urllib.parse.quote_plus(client_secret)}"
+    return "Basic " + base64.b64encode(raw.encode()).decode()
 
 
 class OAuthError(RuntimeError):
@@ -140,6 +151,34 @@ class PasswordGrantTokenProvider:
                     "password": self.password,
                 },
             )
+        )
+        return self._tokens.access_token
+
+
+@dataclass
+class ClientCredentialsTokenProvider:
+    """OAuth 2.0 client credentials grant (RFC 6749 §4.4) -- for a job with no user behind it.
+
+    The token is the client's own: Keycloak issues it to the client's service account, so that
+    account is what the server propagates and what Polaris authorises, by its own grants. Nothing
+    is cached on disk and no refresh token is used (§4.4.3 advises servers not to issue one): a
+    stale token is replaced by running the grant again, which needs only the secret in hand.
+    """
+
+    endpoints: Endpoints
+    client_id: str
+    client_secret: str = field(repr=False)
+    scope: Optional[str] = None
+    _tokens: Optional[_Tokens] = field(default=None, repr=False)
+
+    def token(self) -> str:
+        if self._tokens is not None and self._tokens.fresh():
+            return self._tokens.access_token
+        form = {"grant_type": "client_credentials"}
+        if self.scope:
+            form["scope"] = self.scope
+        self._tokens = _Tokens.from_response(
+            _post_form(self.endpoints.token, form, basic_auth=(self.client_id, self.client_secret))
         )
         return self._tokens.access_token
 

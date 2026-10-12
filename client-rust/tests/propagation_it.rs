@@ -6,8 +6,8 @@
 use std::process::Command;
 
 use spark_connect_propagation_client::{
-    connect, connect_with, new_correlation_id, ConnectOptions, Endpoints,
-    PasswordGrantTokenProvider, StaticTokenProvider,
+    connect, connect_with, new_correlation_id, ClientCredentialsTokenProvider, ConnectOptions,
+    Endpoints, PasswordGrantTokenProvider, StaticTokenProvider,
 };
 use spark_connect_rs::SparkSession;
 use tokio::sync::OnceCell;
@@ -116,6 +116,28 @@ async fn only_alice_reads_the_restricted_table() {
     assert!(
         refused.contains("bob") || refused.contains("orbidden") || refused.contains("not authorized"),
         "expected a Polaris authorisation failure, got: {refused}"
+    );
+}
+
+#[tokio::test]
+#[ignore]
+async fn a_client_credentials_job_is_authorised_as_its_own_service_account() {
+    seed().await;
+    let secret = std::env::var("SPARK_JOB_CLIENT_SECRET")
+        .unwrap_or_else(|_| "spark-job-secret".to_string());
+    let provider =
+        ClientCredentialsTokenProvider::new(Endpoints::new(&issuer()), "spark-job", &secret);
+    let job = connect(&remote(), &provider).await.unwrap();
+
+    // Its service account holds the analyst role, so it gets bob's grants and bob's refusal.
+    assert_eq!(rows(&job, "SELECT * FROM polaris.shared.events").await.unwrap(), 3);
+
+    let refused = rows(&job, "SELECT * FROM polaris.restricted.salaries")
+        .await
+        .expect_err("the service account must be refused by Polaris");
+    assert!(
+        refused.contains("service-account-spark-job"),
+        "expected Polaris to refuse the service account by name, got: {refused}"
     );
 }
 

@@ -58,6 +58,14 @@
       "realmRoles": [
         "analyst"
       ]
+    },
+    {
+      "username": "service-account-spark-job",
+      "enabled": true,
+      "serviceAccountClientId": "spark-job",
+      "realmRoles": [
+        "analyst"
+      ]
     }
   ],
   "clients": [
@@ -75,6 +83,32 @@
         "oauth2.device.authorization.grant.enabled": "true",
         "oauth2.device.polling.interval": "2"
       },
+      "protocolMappers": [
+        {
+          "name": "spark-connect-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "spark-connect",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "spark-job",
+      "name": "Unattended Spark workload (confidential)",
+      "description": "Client credentials grant. The token is the service account's own, so Polaris authorises it as principal service-account-spark-job, by its own grants.",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "spark-job-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
       "protocolMappers": [
         {
           "name": "spark-connect-audience",

@@ -13,17 +13,32 @@ import subprocess
 
 import pytest
 
-from spark_connect_propagation import Endpoints, PasswordGrantTokenProvider, connect
+from spark_connect_propagation import (
+    ClientCredentialsTokenProvider,
+    Endpoints,
+    PasswordGrantTokenProvider,
+    connect,
+)
 
 REMOTE = os.environ.get("SPARK_REMOTE", "sc://spark-connect:15002")
 ISSUER = os.environ.get("KEYCLOAK_ISSUER", "http://keycloak:8080/realms/spark")
 CLIENT_ID = "spark-cli"
+JOB_CLIENT_ID = "spark-job"
 
 
 def token_provider(user: str) -> PasswordGrantTokenProvider:
     """Password grant, so the suite stays headless. The demo uses device flow instead."""
     return PasswordGrantTokenProvider(
         endpoints=Endpoints(ISSUER), client_id=CLIENT_ID, username=user, password=user
+    )
+
+
+def job_token_provider() -> ClientCredentialsTokenProvider:
+    """Client credentials: an unattended job, signed in as its own service account."""
+    return ClientCredentialsTokenProvider(
+        endpoints=Endpoints(ISSUER),
+        client_id=JOB_CLIENT_ID,
+        client_secret=os.environ.get("SPARK_JOB_CLIENT_SECRET", "spark-job-secret"),
     )
 
 
@@ -97,6 +112,14 @@ def alice():
 def bob():
     require_shared_secret()
     session = connect(REMOTE, token_provider("bob"))
+    yield session
+    session.stop()
+
+
+@pytest.fixture(scope="session")
+def spark_job():
+    require_shared_secret()
+    session = connect(REMOTE, job_token_provider())
     yield session
     session.stop()
 

@@ -1873,6 +1873,7 @@ name = "spark-connect-propagation-client"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "form_urlencoded",
  "reqwest",
  "serde",
  "serde_json",
