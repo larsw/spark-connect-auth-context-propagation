@@ -108,11 +108,19 @@ fi
 # The PoC builds its jar locally; Spark 4.1 supports Java 17/21 and we target release 21.
 if have java; then
   JAVA_VER="$(java -version 2>&1 | head -1 | sed -E 's/.*version "([0-9]+).*/\1/')"
-  if [ "${JAVA_VER:-0}" -ge 21 ] 2>/dev/null; then
+  if [ "${JAVA_VER:-0}" -eq 21 ] 2>/dev/null; then
     ok "java $JAVA_VER"
-    [ "$JAVA_VER" -gt 21 ] && hint "newer than 21 is fine; the module compiles with --release 21"
+  elif [ "${JAVA_VER:-0}" -gt 21 ] 2>/dev/null; then
+    # Building is fine: every module compiles with --release 21. Running the JVM client is not,
+    # because its Spark Connect client embeds Arrow: on 25 the first session dies in Arrow's
+    # allocator with an ExceptionInInitializerError that names neither the cause nor the fix.
+    ok "java $JAVA_VER builds everything (every module compiles with --release 21)"
+    note "java $JAVA_VER cannot run the JVM client: make demo-jvm and make test-jvm-it need JDK 21"
+    hint "Spark 4.1 supports Java 17/21 only; on 25 the first session fails inside Arrow"
+    hint "for those two, make a JDK 21 your JAVA_HOME and put it first on PATH"
+    hint "sudo apt install openjdk-21-jdk   # or https://adoptium.net"
   else
-    bad "java $JAVA_VER found, need 21+ (Spark 4.1 supports 17/21; we target 21)"
+    bad "java $JAVA_VER found, need JDK 21 (Spark 4.1 supports 17/21; we target 21)"
   fi
 else
   bad "java not found (need JDK 21)"
