@@ -151,7 +151,7 @@ client-jvm/             the same client for the JVM, in Java (Maven)
 client-rust/            the same client in Rust, on the spark-connect-rs crate (Cargo)
 demo/                   the walkthrough: demo.py, sparql.py, and java/ + rust/ for the same thing again
 tests/                  the verification suite
-docs/                   screenshots the README points at
+docs/                   screenshots the README points at; presentations/ holds the slide deck
 ```
 
 ### The Java plugin

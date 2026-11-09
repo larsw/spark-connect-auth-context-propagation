@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 594" width="1184" height="594" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="query-path-title query-path-desc">
+  <title id="query-path-title">The path a query takes</title>
+  <desc id="query-path-desc">A sequence diagram with lifelines for alice's client, Keycloak, the Spark Connect server's gRPC thread and ExecutionThread, Polaris, a Spark worker and MinIO. The client sends ExecutePlan with x-user-token, x-correlation-id and a client-minted operation_id. The gRPC thread validates the JWT, checks user_id is the subject and that the subject owns the session, exchanges the token at Keycloak for one addressed to Polaris, and parks the identity under user, session and operation. Only the job tag reaches the ExecutionThread, which reads it and looks the identity up, then calls Polaris's loadTable with a Bearer token and X-Request-ID and receives a scoped STS key. The worker receives a task with that key and reads one prefix from MinIO.</desc>
+  <defs>
+    <marker id="query-path-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="query-path-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="query-path-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="query-path-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+  <rect class="d-zone" x="333" y="0" width="348" height="590" rx="10"/>
+  <text class="d-xs d-b d-c" x="507" y="20">SPARK CONNECT SERVER</text>
+  <line class="d-life" x1="84" y1="72" x2="84" y2="582"/>
+  <rect class="d-box2" x="8" y="32" width="152" height="40" rx="6"/>
+  <text class="d-s d-b d-c" x="84" y="58">alice’s client</text>
+  <line class="d-life" x1="254" y1="72" x2="254" y2="582"/>
+  <rect class="d-box2" x="178" y="32" width="152" height="40" rx="6"/>
+  <text class="d-s d-b d-c" x="254" y="58">Keycloak</text>
+  <line class="d-life" x1="422" y1="72" x2="422" y2="582"/>
+  <rect class="d-navy" x="346" y="32" width="152" height="40" rx="6"/>
+  <text class="d-s d-b d-c d-on-navy" x="422" y="58">gRPC thread</text>
+  <line class="d-life" x1="592" y1="72" x2="592" y2="582"/>
+  <rect class="d-navy" x="516" y="32" width="152" height="40" rx="6"/>
+  <text class="d-s d-b d-c d-on-navy" x="592" y="58">ExecutionThread</text>
+  <line class="d-life" x1="760" y1="72" x2="760" y2="582"/>
+  <rect class="d-box2" x="684" y="32" width="152" height="40" rx="6"/>
+  <text class="d-s d-b d-c" x="760" y="58">Polaris</text>
+  <line class="d-life" x1="930" y1="72" x2="930" y2="582"/>
+  <rect class="d-box2" x="854" y="32" width="152" height="40" rx="6"/>
+  <text class="d-s d-b d-c" x="930" y="58">Spark worker</text>
+  <line class="d-life" x1="1098" y1="72" x2="1098" y2="582"/>
+  <rect class="d-box2" x="1022" y="32" width="152" height="40" rx="6"/>
+  <text class="d-s d-b d-c" x="1098" y="58">MinIO</text>
+
+  <g class="fragment" data-fragment-index="1">
+  <line class="d-line" x1="84" y1="108" x2="420" y2="108" marker-end="url(#query-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="252" y="100">ExecutePlan  +  x-user-token  +  x-correlation-id</text>
+  <text class="d-xs d-c d-halo" x="252" y="126">+ a client-minted operation_id</text>
+  <rect class="d-note" x="334" y="132" width="176" height="74" rx="4"/>
+  <text class="d-xs d-c" x="422" y="154">validate the JWT,</text>
+  <text class="d-xs d-c" x="422" y="174">pin user_id to sub,</text>
+  <text class="d-xs d-c" x="422" y="194">check session owner</text>
+  </g>
+  <g class="fragment" data-fragment-index="2">
+  <line class="d-line" x1="422" y1="236" x2="256" y2="236" marker-end="url(#query-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="339" y="228">RFC 8693 exchange</text>
+  <line class="d-line d-dash" x1="254" y1="266" x2="420" y2="266" marker-end="url(#query-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="337" y="258">aud=polaris</text>
+  <rect class="d-note" x="334" y="280" width="176" height="54" rx="4"/>
+  <text class="d-xs d-c" x="422" y="302">park the identity under</text>
+  <text class="d-xs d-c" x="422" y="322">(user, session, op)</text>
+  </g>
+  <g class="fragment" data-fragment-index="3">
+  <line class="d-emline" x1="422" y1="358" x2="590" y2="358" marker-end="url(#query-path-arrow-em)"/>
+  <text class="d-xs d-c d-halo" x="506" y="350">only the job tag</text>
+  <rect class="d-note" x="504" y="372" width="176" height="54" rx="4"/>
+  <text class="d-xs d-c" x="592" y="394">read the job tag,</text>
+  <text class="d-xs d-c" x="592" y="414">look the identity up</text>
+  </g>
+  <g class="fragment" data-fragment-index="4">
+  <line class="d-line" x1="592" y1="454" x2="758" y2="454" marker-end="url(#query-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="675" y="446">loadTable, Bearer</text>
+  <text class="d-xs d-c d-halo" x="675" y="472">+ X-Request-ID</text>
+  <line class="d-line d-dash" x1="760" y1="500" x2="594" y2="500" marker-end="url(#query-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="677" y="492">scoped STS key</text>
+  </g>
+  <g class="fragment" data-fragment-index="5">
+  <line class="d-line" x1="592" y1="528" x2="928" y2="528" marker-end="url(#query-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="760" y="520">task + that key</text>
+  <line class="d-line" x1="930" y1="550" x2="1096" y2="550" marker-end="url(#query-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="1013" y="542">GET, one prefix</text>
+  <line class="d-line d-dash" x1="1098" y1="570" x2="932" y2="570" marker-end="url(#query-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="1015" y="562">parquet</text>
+  </g>
+</svg>

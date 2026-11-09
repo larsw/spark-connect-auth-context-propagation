@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 380" width="1184" height="380" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="hijack-title hijack-desc">
+  <title id="hijack-title">Claiming another user's session</title>
+  <desc id="hijack-desc">bob's client sends bob's own token but claims user_id alice and alice's session id. As shipped, Spark Connect looks the SessionHolder up by user_id and session_id, both taken from the request body, and bob is inside alice's session, with her temp views, cached DataFrames, UDFs and propagated credential. With the interceptor, before Spark sees the request, user_id must equal the JWT's subject and a session belongs to the first subject that used it, so bob gets PERMISSION_DENIED, logged with his subject, the claim and the correlation ID.</desc>
+  <defs>
+    <marker id="hijack-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="hijack-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="hijack-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="hijack-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+  <rect class="d-box2" x="0" y="118" width="330" height="140" rx="8"/>
+  <text class="d-t d-b" x="16" y="150">bob’s client sends</text>
+  <text class="d-xs d-m" x="16" y="182">x-user-token:    bob's JWT</text>
+  <text class="d-xs d-m" x="16" y="208">user_id:         alice</text>
+  <text class="d-xs d-m" x="16" y="234">session_id:      alice's</text>
+
+  <g class="fragment" data-fragment-index="1">
+  <text class="d-xs d-b" x="420" y="14">SPARK CONNECT, AS SHIPPED</text>
+  <path class="d-noline" d="M330,170 H370 V82 H418" marker-end="url(#hijack-arrow-no)"/>
+  <rect class="d-box" x="420" y="28" width="330" height="108" rx="8"/>
+  <text class="d-t d-b" x="436" y="60">SessionHolder lookup</text>
+  <text class="d-s" x="436" y="88">keyed by (user_id, session_id),</text>
+  <text class="d-s" x="436" y="112">both taken from the request body</text>
+  <line class="d-noline" x1="750" y1="82" x2="798" y2="82" marker-end="url(#hijack-arrow-no)"/>
+  <rect class="d-no" x="800" y="28" width="384" height="108" rx="8"/>
+  <text class="d-t d-b d-not" x="816" y="60">bob is inside alice’s session</text>
+  <text class="d-s" x="816" y="88">her temp views, cached DataFrames,</text>
+  <text class="d-s" x="816" y="112">UDFs and propagated credential</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="2">
+  <text class="d-xs d-b" x="420" y="254">WITH THE INTERCEPTOR</text>
+  <path class="d-line" d="M330,206 H370 V322 H418" marker-end="url(#hijack-arrow)"/>
+  <rect class="d-box3" x="420" y="268" width="330" height="108" rx="8"/>
+  <text class="d-t d-b" x="436" y="300">interceptor checks first</text>
+  <text class="d-s" x="436" y="328">user_id must equal the JWT’s sub</text>
+  <text class="d-s" x="436" y="352">a session belongs to its first sub</text>
+  <line class="d-line" x1="750" y1="322" x2="798" y2="322" marker-end="url(#hijack-arrow)"/>
+  <rect class="d-ok" x="800" y="268" width="384" height="108" rx="8"/>
+  <text class="d-t d-b d-m d-okt" x="816" y="300">PERMISSION_DENIED</text>
+  <text class="d-s" x="816" y="328">logged, with the</text>
+  <text class="d-s" x="816" y="352">correlation ID</text>
+  </g>
+</svg>

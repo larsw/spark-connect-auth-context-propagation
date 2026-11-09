@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 362" width="1184" height="362" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="sparql-title sparql-desc">
+  <title id="sparql-title">The same identity, through a SPARQL endpoint</title>
+  <desc id="sparql-desc">The SPARQL console, built with React, YASGUI and Blueprint, signs in with PKCE and sends the user's bearer token and an X-Correlation-ID. The forked Ontop VKG passes its QueryContext to the connection pool, builds one JDBC URL per request from it, holds no credential for the data, and adopts the correlation ID as its query id. The Spark Connect JDBC driver turns URL parameters it does not recognise into gRPC metadata, so the request reaches Spark Connect and the plugin on exactly the path every other client takes. With the same SPARQL, mapping and endpoint, alice gets both salaries and bob is refused by Polaris; nothing in the mapping mentions bob.</desc>
+  <defs>
+    <marker id="sparql-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="sparql-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="sparql-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="sparql-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+  <rect class="d-box" x="0" y="0" width="220" height="150" rx="8"/>
+  <text class="d-t d-b" x="16" y="32">SPARQL console</text>
+  <text class="d-xs" x="16" y="64">React, YASGUI, Blueprint</text>
+  <text class="d-xs" x="16" y="88">signs in with PKCE</text>
+  <text class="d-xs" x="16" y="112">Bearer &lt;the user's token&gt;</text>
+  <text class="d-xs" x="16" y="136">+ X-Correlation-ID</text>
+  <g class="fragment" data-fragment-index="1">
+  <line class="d-line" x1="220" y1="75" x2="258" y2="75" marker-end="url(#sparql-arrow)"/>
+  <rect class="d-box2" x="260" y="0" width="300" height="150" rx="8"/>
+  <text class="d-t d-b" x="276" y="32">Ontop VKG, forked</text>
+  <text class="d-xs" x="276" y="64">QueryContext reaches the connection pool</text>
+  <text class="d-xs" x="276" y="88">one JDBC URL per request, built from it</text>
+  <text class="d-xs" x="276" y="112">has no data credentials of its own</text>
+  <text class="d-xs" x="276" y="136">adopts the correlation ID as its query id</text>
+  </g>
+  <g class="fragment" data-fragment-index="2">
+  <line class="d-line" x1="560" y1="75" x2="598" y2="75" marker-end="url(#sparql-arrow)"/>
+  <rect class="d-box2" x="600" y="0" width="270" height="150" rx="8"/>
+  <text class="d-t d-b" x="616" y="32">Spark Connect JDBC</text>
+  <text class="d-xs" x="616" y="64">turns URL parameters it does</text>
+  <text class="d-xs" x="616" y="88">not recognise into gRPC</text>
+  <text class="d-xs" x="616" y="112">metadata: x-user-token,</text>
+  <text class="d-xs" x="616" y="136">x-correlation-id</text>
+  </g>
+  <g class="fragment" data-fragment-index="3">
+  <line class="d-line" x1="870" y1="75" x2="908" y2="75" marker-end="url(#sparql-arrow)"/>
+  <rect class="d-box3" x="910" y="0" width="274" height="150" rx="8"/>
+  <text class="d-t d-b" x="926" y="32">Spark Connect + plugin</text>
+  <text class="d-xs" x="926" y="64">exactly the path every other</text>
+  <text class="d-xs" x="926" y="88">client takes: validate, pin,</text>
+  <text class="d-xs" x="926" y="112">exchange, job tag, Polaris</text>
+  </g>
+  <g class="fragment" data-fragment-index="4">
+  <text class="d-s d-i" x="0" y="204">Same query, same endpoint:</text>
+  <rect class="d-ok" x="0" y="220" width="570" height="100" rx="8"/>
+  <text class="d-t d-b d-okt" x="16" y="252">alice asks for the salaries</text>
+  <text class="d-xs d-m" x="16" y="284">{name=alice salary=100}, {name=bob salary=90}</text>
+  <rect class="d-no" x="614" y="220" width="570" height="100" rx="8"/>
+  <text class="d-t d-b d-not" x="630" y="252">bob asks for the salaries</text>
+  <text class="d-xs d-m" x="630" y="284">Forbidden: Principal 'bob' … is not authorized …</text>
+  <text class="d-s d-i" x="0" y="354">The R2RML mapping has no access rules. Polaris refused bob.</text>
+  </g>
+</svg>

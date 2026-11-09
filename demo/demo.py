@@ -77,6 +77,7 @@ def main() -> int:
 
     require_shared_secret()
 
+    # tag::two-users[]
     alice = sign_in("alice")
     bob = sign_in("bob")
 
@@ -97,6 +98,7 @@ def main() -> int:
         heading("Only alice may read the restricted namespace")
         attempt(alice, "alice", "SELECT * FROM polaris.restricted.salaries")
         attempt(bob, "bob  ", "SELECT * FROM polaris.restricted.salaries")
+    # end::two-users[]
 
     heading("Follow the whole thing through the logs")
     print(f"  Every RPC above carried correlation id {BOLD}{cid}{RESET}")

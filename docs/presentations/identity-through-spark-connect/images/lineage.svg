@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 424" width="1184" height="424" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="lineage-title lineage-desc">
+  <title id="lineage-title">Where per-user catalog auth and lineage collide</title>
+  <desc id="lineage-desc">On the ExecutionThread, which carries the job tag, Iceberg loads the table, the AuthManager finds alice by the tag, and Polaris answers 200, as alice. On the listener bus thread, which has no job tag and is not anybody, OpenLineage resolves the dataset by loading the table, the AuthManager finds no identity, and Polaris answers 401, so inputs and outputs stay empty by design. But the identity does cross inside the event: SparkListenerJobStart carries spark.job.tags, so every job-backed run in Marquez names its correlation ID and principal. A name is just data; a catalog call needs a live credential.</desc>
+  <defs>
+    <marker id="lineage-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="lineage-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="lineage-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="lineage-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+  <rect class="d-zone" x="0" y="0" width="560" height="306" rx="10"/>
+  <text class="d-t d-b" x="20" y="34">the ExecutionThread</text>
+  <text class="d-s d-i" x="20" y="58">carries the job tag</text>
+  <rect class="d-box2" x="20" y="76" width="520" height="52" rx="6"/>
+  <text class="d-s" x="36" y="108">Iceberg loads the table</text>
+  <line class="d-line" x1="280" y1="128" x2="280" y2="148" marker-end="url(#lineage-arrow)"/>
+  <rect class="d-box2" x="20" y="150" width="520" height="52" rx="6"/>
+  <text class="d-s" x="36" y="182">the AuthManager finds alice by the tag</text>
+  <line class="d-line" x1="280" y1="202" x2="280" y2="222" marker-end="url(#lineage-arrow)"/>
+  <rect class="d-ok" x="20" y="224" width="520" height="70" rx="6"/>
+  <text class="d-s d-b d-okt" x="36" y="252">Polaris: 200, as alice</text>
+  <text class="d-xs" x="36" y="276">the query reads, with a key vended for her</text>
+  <g class="fragment" data-fragment-index="1">
+  <rect class="d-zone" x="624" y="0" width="560" height="306" rx="10"/>
+  <text class="d-t d-b" x="644" y="34">the listener bus thread</text>
+  <text class="d-s d-i" x="644" y="58">no job tag, so no identity</text>
+  <rect class="d-box2" x="644" y="76" width="520" height="52" rx="6"/>
+  <text class="d-s" x="660" y="108">OpenLineage resolves the dataset: loadTable</text>
+  <line class="d-line" x1="904" y1="128" x2="904" y2="148" marker-end="url(#lineage-arrow)"/>
+  <rect class="d-box2" x="644" y="150" width="520" height="52" rx="6"/>
+  <text class="d-s" x="660" y="182">the AuthManager finds no identity</text>
+  <line class="d-line" x1="904" y1="202" x2="904" y2="222" marker-end="url(#lineage-arrow)"/>
+  <rect class="d-no" x="644" y="224" width="520" height="70" rx="6"/>
+  <text class="d-s d-b d-not" x="660" y="252">Polaris: 401</text>
+  <text class="d-xs" x="660" y="276">so inputs and outputs are empty</text>
+  </g>
+  <g class="fragment" data-fragment-index="2">
+  <rect class="d-cid" x="0" y="330" width="1184" height="92" rx="8"/>
+  <text class="d-s d-b d-cidt" x="20" y="362">The job-start event does carry the tags.</text>
+  <text class="d-s" x="20" y="392"><tspan class="d-m">SparkListenerJobStart</tspan> carries <tspan class="d-m">spark.job.tags</tspan>, so each job-backed run in Marquez gets the</text>
+  <text class="d-s" x="20" y="412">correlation ID and principal as a facet. That is enough to record who ran it, but not to call the catalog.</text>
+  </g>
+</svg>

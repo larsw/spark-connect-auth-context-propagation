@@ -236,6 +236,7 @@ public final class PropagatedIdentityHolder {
    * Parses one job tag. Parsed from the right, because a userId may legitimately contain
    * underscores while the markers are fixed and the trailing identifiers are opaque.
    */
+  // tag::parse-job-tag[]
   static Optional<JobTag> parseJobTag(String tag) {
     if (tag == null || !tag.startsWith(TAG_PREFIX)) {
       return Optional.empty();
@@ -253,6 +254,7 @@ public final class PropagatedIdentityHolder {
     String operationId = tag.substring(operationAt + OPERATION_MARKER.length());
     return Optional.of(new JobTag(userId, sessionId, operationId));
   }
+  // end::parse-job-tag[]
 
   /** Visible for diagnostics. */
   public static Map<String, String> sessionOwnersSnapshot() {

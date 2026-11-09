@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 444" width="1184" height="444" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="correlation-title correlation-desc">
+  <title id="correlation-title">One correlation ID, everywhere</title>
+  <desc id="correlation-desc">One UUID4, minted by the client and scoped by a block or a session, travels as x-correlation-id gRPC metadata and as an X-Request-ID HTTP header to Polaris; it is never in the request body, so never in the Spark UI's job description. It appears in the PySpark client's correlation_id block, in the Spark Connect log beside the principal, in Polaris's access log, in every refusal, in the sparkConnectPropagation facet of each Marquez run, and as Ontop's query id. make cid prints every line that mentions it, from every service.</desc>
+  <defs>
+    <marker id="correlation-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="correlation-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="correlation-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="correlation-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+  <rect class="d-cid" x="0" y="0" width="260" height="362" rx="8"/>
+  <text class="d-t d-b d-cidt" x="20" y="40">one UUID4</text>
+  <text class="d-s" x="20" y="72">minted by the client,</text>
+  <text class="d-s" x="20" y="96">scoped by a block or</text>
+  <text class="d-s" x="20" y="120">a session</text>
+  <text class="d-xs d-m d-cidt" x="20" y="168">x-correlation-id</text>
+  <text class="d-xs" x="20" y="192">gRPC metadata in</text>
+  <text class="d-xs d-m d-cidt" x="20" y="226">X-Request-ID</text>
+  <text class="d-xs" x="20" y="250">HTTP header to Polaris</text>
+  <text class="d-xs" x="20" y="292">sent as metadata, so it</text>
+  <text class="d-xs" x="20" y="314">stays out of the Spark</text>
+  <text class="d-xs" x="20" y="336">UI’s job descriptions</text>
+    <g>
+  <path class="d-cidline" d="M260,26 H298" marker-end="url(#correlation-arrow-cid)"/>
+  <rect class="d-box" x="300" y="0" width="884" height="52" rx="6"/>
+  <text class="d-s d-b" x="316" y="32">PySpark client</text>
+  <text class="d-xs d-m" x="452" y="32">with correlation_id() as cid:   →  x-correlation-id: 5ca6e59a-…</text>
+  </g>
+  <g class="fragment" data-fragment-index="1">
+  <path class="d-cidline" d="M260,88 H298" marker-end="url(#correlation-arrow-cid)"/>
+  <rect class="d-box" x="300" y="62" width="884" height="52" rx="6"/>
+  <text class="d-s d-b" x="316" y="94">Spark Connect</text>
+  <text class="d-xs d-m" x="452" y="94">[5ca6e59a-…,alice] UserTokenServerInterceptor: ExecutePlan authenticated as alice</text>
+  </g>
+  <g class="fragment" data-fragment-index="2">
+  <path class="d-cidline" d="M260,150 H298" marker-end="url(#correlation-arrow-cid)"/>
+  <rect class="d-box" x="300" y="124" width="884" height="52" rx="6"/>
+  <text class="d-s d-b" x="316" y="156">Polaris</text>
+  <text class="d-xs d-m" x="452" y="156">[5ca6e59a-…,POLARIS] access-log: … - alice "GET /api/catalog/v1/…"</text>
+  </g>
+  <g class="fragment" data-fragment-index="3">
+  <path class="d-cidline" d="M260,212 H298" marker-end="url(#correlation-arrow-cid)"/>
+  <rect class="d-box" x="300" y="186" width="884" height="52" rx="6"/>
+  <text class="d-s d-b" x="316" y="218">a refusal</text>
+  <text class="d-xs d-m" x="452" y="218">PERMISSION_DENIED: … (correlation-id=5ca6e59a-…)</text>
+  </g>
+  <g class="fragment" data-fragment-index="4">
+  <path class="d-cidline" d="M260,274 H298" marker-end="url(#correlation-arrow-cid)"/>
+  <rect class="d-box" x="300" y="248" width="884" height="52" rx="6"/>
+  <text class="d-s d-b" x="316" y="280">Marquez</text>
+  <text class="d-xs d-m" x="452" y="280">"sparkConnectPropagation": {"correlationId": "5ca6e59a-…", "principal": "alice", …}</text>
+  </g>
+  <g class="fragment" data-fragment-index="5">
+  <path class="d-cidline" d="M260,336 H298" marker-end="url(#correlation-arrow-cid)"/>
+  <rect class="d-box" x="300" y="310" width="884" height="52" rx="6"/>
+  <text class="d-s d-b" x="316" y="342">Ontop</text>
+  <text class="d-xs d-m" x="452" y="342">query id 5ca6e59a-…, adopted from the caller’s X-Correlation-ID</text>
+  </g>
+  <g class="fragment" data-fragment-index="6">
+  <rect class="d-navy" x="0" y="386" width="1184" height="56" rx="8"/>
+  <text class="d-s d-on-navy d-m" x="24" y="420">make cid CID=5ca6e59a-…</text>
+  <text class="d-s d-on-navy" x="300" y="420">greps every service’s logs for it</text>
+  </g>
+</svg>

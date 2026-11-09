@@ -1,0 +1,539 @@
+// No document title: asciidoctor-revealjs would make a title slide of it, whatever :notitle: says.
+// The cover below is the title slide, and its title is the page's.
+:description: How the PoC carries a user's identity through Spark Connect to Polaris and object storage, and traces each request with a correlation ID.
+:revealjs_theme: white
+:revealjs_width: 1280
+:revealjs_height: 720
+:revealjs_margin: 0
+:revealjs_center: false
+:revealjs_transition: fade
+:revealjs_slideNumber: c/t
+:revealjs_hash: true
+// Printed from a browser (index.html?print-pdf), one page per slide with every step shown, as
+// render-pdf.sh prints it: no page for each step of a diagram.
+:revealjs_pdfseparatefragments: false
+:source-highlighter: highlightjs
+:source-language: java
+:data-uri:
+// The deck's diagrams, inlined (opts=inline) so that their parts can be fragments, shown one click
+// at a time; the PDF shows every part.
+:diagrams: {docdir}/images
+// The code on the slides is included from the repository by tag: it is the code that runs.
+:repo: {docdir}/../../..
+:server: {repo}/server/src/main/java/io/sparkconnect/propagation
+
+
+[.cover,state=bookend]
+== User identity through Spark Connect
+
+[.kicker]
+Proof of concept
+
+[.lead]
+Secure propagation of user identity and end-to-end session correlation.
+
+[.notes]
+****
+This PoC works and runs today. A user signs in, and their identity goes through Spark Connect to the Polaris catalog and then to temporary credentials on object storage.
+Spark itself has no object-storage credentials.
+Everything here is tested against a running stack: 43 end-to-end checks and 109 unit tests.
+It takes about thirty minutes. The last third covers what we found out about the upstream projects.
+****
+
+== Agenda
+
+. The problem
+. The stack and the path of a query
+. The four hops, one at a time
+. Session hijacking and the correlation ID
+. Other clients, jobs, SPARQL and lineage
+. Findings and tests
+
+[.notes]
+****
+Sections 3 and 4 explain how it works. Section 5 checks that it still works with other clients, service accounts, SPARQL and a lineage collector.
+****
+
+== The problem
+
+image::{diagrams}/ambient.svg["Who reads the data: as shipped, and with this PoC",opts=inline,role=diagram]
+
+[.notes]
+****
+Out of the box, Spark Connect has at most a shared secret for the channel. The `user_id` is whatever string the client sends.
+So the catalog and the object store only ever see Spark, which uses one service credential and one static key that can read every table.
+If you ask the audit log who read the salaries, it says "spark".
+
+Click. With the PoC, each caller sends its own token.
+The server checks it, sets `user_id` from it, and exchanges it for a token issued for Polaris.
+Polaris authorises that user and gives back a key that only works on one table's files and expires after a few minutes.
+Now the audit log says "alice".
+****
+
+== What the PoC shows
+
+[cols="2,5",options=header]
+|===
+| |Tested against the running stack
+
+|Authorisation
+|alice can read a restricted table and Polaris refuses bob. Same server and query, different token
+
+|Per-user storage keys
+|alice and bob get different temporary STS keys, each limited by a session policy to one table's prefix
+
+|Session hijacking
+|A client that claims another user's `user_id` and `session_id` is refused. Stock Spark Connect allows it
+
+|Correlation
+|One UUID shows up in the client, Spark Connect, Polaris, Ontop and Marquez, including on errors
+
+|Other callers
+|Python, JVM and Rust clients, a job with no user, a SPARQL endpoint and two browser consoles
+|===
+
+[.notes]
+****
+Each row has an end-to-end test, for example `test_alice_reads_restricted_but_bob_is_forbidden`, `test_polaris_vends_distinct_temporary_credentials_per_user`, `test_bob_cannot_claim_alices_session` and `test_one_correlation_id_appears_in_every_service`. The JVM, Rust and Ontop suites cover the last row.
+
+Spark, Iceberg and Polaris are unmodified. The server side is one jar on Spark's classpath. It plugs in through a gRPC interceptor and an Iceberg AuthManager, which are both public extension points.
+The only fork is of Ontop, for the SPARQL endpoint. We'll get to why.
+****
+
+== The stack
+
+image::{diagrams}/stack.svg["The stack",opts=inline,role=diagram]
+
+[.notes]
+****
+It all runs in Docker Compose: Keycloak 26.7, Polaris 1.7, MinIO, Spark 4.1.3 with a standalone master and worker, Marquez, Ontop and the two consoles.
+We need a real worker JVM. With `local[*]` the executors are threads inside the driver, so a successful read wouldn't tell us anything about the workers.
+
+The plugin has three parts: an interceptor on the gRPC server, a static identity holder, and an Iceberg AuthManager.
+The jar goes into Spark's own jars directory instead of `--jars`. With `--jars` it lands in a child classloader, the interceptor and the AuthManager each get their own copy of the static holder, and the token disappears without an error.
+
+Click. The other callers: Ontop runs SPARQL queries as the caller, the Polaris console shows each user their own catalog, and lineage goes to Marquez.
+****
+
+== The path of a query
+
+image::{diagrams}/query-path.svg["The path a query takes",opts=inline,role=diagram]
+
+[.notes]
+****
+The server is drawn as two lifelines, one per thread, because getting from one thread to the other is the hard part.
+
+. The client sends ExecutePlan with the token and correlation ID as gRPC metadata. It also sends an operation id that it generated.
+. On the gRPC thread, the server validates the JWT against a cached JWKS. It checks that the `user_id` in the request is the token's subject, and that the subject owns the session.
+. It exchanges the token at Keycloak for one issued for Polaris, then stores the identity.
+. Spark runs the operation on a new thread. The only thing that comes across from the gRPC thread is the job tag.
+. The AuthManager reads the tag, looks up the identity and calls Polaris as alice, with her correlation ID in `X-Request-ID`.
+. Polaris returns the table metadata and a scoped key. The worker reads from MinIO using that key.
+****
+
+== Hop 1: client headers
+
+[.lead]
+The client puts the user's token and the correlation ID on every RPC as gRPC metadata, and reads the token again for each call.
+
+[source,python]
+----
+include::{repo}/client/src/spark_connect_propagation/channel.py[tag=headers,indent=0]
+----
+
+[.notes]
+****
+This is the Python client's interceptor. It only uses public PySpark API: a custom channel builder and `add_interceptor`.
+
+The token is read on every call, so if the provider refreshes it, a long session keeps working.
+It goes in its own header, `x-user-token`. Spark's pre-shared-key interceptor already uses `Authorization` to decide whether the client is trusted at all. The user token says which user it is, and both checks run.
+We use metadata because Spark writes the whole request proto into the job description. A token in the request body would show up in the Spark UI.
+****
+
+== Hop 2: token exchange
+
+image::{diagrams}/token-exchange.svg["RFC 8693 token exchange",opts=inline,role=diagram]
+
+[.notes]
+****
+The server doesn't pass the user's token on.
+It's a confidential Keycloak client, and it asks Keycloak for a token issued for Polaris on alice's behalf. This is standard token exchange (RFC 8693), which Keycloak 26.7 has on by default.
+
+The new token has the same subject but a different audience and authorised party. It also carries the claims Polaris reads, `principal_name` and `principal_roles`.
+Polaris looks the principal up by name, so Keycloak doesn't need to know Polaris's internal ids.
+
+Exchanges are cached by a hash of the inbound token. Validation uses a cached JWKS, so in the normal case neither step makes a network call.
+
+One thing that cost us time: `audience=polaris` doesn't add an audience. It only filters the ones a mapper has already added. It's in the findings.
+****
+
+== Hop 3: crossing threads
+
+[.lead]
+Spark runs each operation on a new thread that isn't from a pool. The job tag is the only thing that comes with it.
+
+image::{diagrams}/thread-bridge.svg["Crossing the thread boundary with the job tag",opts=inline,role=diagram]
+
+[.notes]
+****
+This is the hardest part of the design.
+
+The interceptor runs on the gRPC handler thread. It stores the identity in a static holder, keyed by operation and by session.
+
+Click. None of the thread-local state reaches the code that calls Polaris. That includes ThreadLocals, the gRPC Context and the MDC. `ExecuteThreadRunner` starts a new thread for every operation, on purpose.
+
+Click. What does reach it is the job tag that Spark sets inside `withSession`. It contains the user, the session and the operation.
+
+Click. The AuthManager reads the tag from its own thread and looks up the identity.
+The tag format is internal to Spark, so this is the one part of the design that could break on an upgrade.
+The `Operation_` part only works because our clients set `operation_id`. PySpark leaves that to the server, which never tells the client what it picked.
+****
+
+== Reading the job tag
+
+[.columns]
+--
+[.column.code]
+[source,java]
+----
+include::{server}/PropagatedIdentityHolder.java[tag=parse-job-tag,indent=0]
+----
+
+[.column]
+* Parsed from the right, because a `userId` can contain underscores
+* Looked up by operation first, then by session
+* The session fallback always has the right user, but might have the wrong correlation ID
+* AnalyzePlan has no ExecutionThread, so it uses the identity bound to the handler thread
+--
+
+[.notes]
+****
+That's all of the bridge on the server side.
+The session fallback is for clients that don't send an operation id. It still finds the right user, because `user_id` is pinned to the subject, so a session entry can't belong to anyone else.
+Keying by operation handles the remaining case, two operations running at once in one session with different correlation IDs. One of the tests does exactly that.
+
+Spark answers AnalyzePlan directly on the gRPC thread, so there's no job tag. We found this through the JDBC driver, which asks for schemas before running anything.
+****
+
+== Hop 4: Polaris authorises and hands out keys
+
+image::{diagrams}/vending.svg["Per-caller credentials, vended by Polaris",opts=inline,role=diagram]
+
+[.notes]
+****
+Polaris authorises the principal named in the token, using the roles in it. alice is a data engineer and can use the whole catalog. bob is an analyst and can only read the shared namespace.
+
+When Polaris allows a table load, it gets a temporary key from STS with a session policy limited to that table's prefix.
+alice and bob get different keys, and neither one is the MinIO root key. MinIO's audit log shows what the executor sent: a temporary key with parent `minio_root` and a session policy.
+
+When Polaris refuses, there's no key. Spark containers have no S3 credentials, so if a read works, it used a key issued for that caller.
+****
+
+== The demo: two users, one server
+
+[source,python]
+----
+include::{repo}/demo/demo.py[tag=two-users,indent=0]
+----
+
+[.notes]
+****
+This is `make demo`. Each user signs in with the device flow, the same way `gh auth login` works.
+The server and its config are the same for both users. Only the token on the connection is different.
+alice creates the tables through Spark, so the demo also covers writes and write credentials.
+bob can read the shared table, and Polaris refuses him the restricted one, by name.
+The whole block runs under one correlation ID. The demo prints it at the end so you can pass it to `make cid`.
+****
+
+== What each caller can read
+
+[cols="3,2,2",options=header]
+|===
+|Principal |`shared.events` |`restricted.salaries`
+
+|alice (data_engineer)
+|[.ok]#read#
+|[.ok]#read#
+
+|bob (analyst)
+|[.ok]#read#
+|[.no]#403 from Polaris#
+
+|service-account-spark-job (analyst)
+|[.ok]#read#
+|[.no]#403 from Polaris#
+|===
+
+[.lead]
+You get the same answers through Spark, the Polaris console and SPARQL. Polaris makes the decision each time.
+
+[.notes]
+****
+The last row is a job with no user. It signs in with the client credentials grant, which comes up again in a few slides.
+We didn't write any authorisation code. Every refusal here comes from Polaris, whichever way the request came in.
+****
+
+== Session hijacking
+
+image::{diagrams}/hijack.svg["Claiming another user's session",opts=inline,role=diagram]
+
+[.notes]
+****
+This is the most serious finding.
+Spark Connect identifies a session by `(user_id, session_id)`, and both come from the request. `user_id` is from the connection string or `$USER`, and the client generates the session id.
+Neither is tied to an authenticated identity. The shared secret can't help, because every client sends the same one.
+
+Click. On a shared server, anyone who can connect can name another user's session and attach to it. They get that user's temp views, cached DataFrames and UDFs, and in this setup, their credential as well.
+
+Click. The interceptor rejects the request before Spark sees it. `test_bob_cannot_claim_alices_session` tries the attack and gets PERMISSION_DENIED.
+If you run Spark Connect for more than one user, you have to fix this yourself.
+****
+
+== The user_id check
+
+[.columns]
+--
+[.column.code]
+[source,java]
+----
+include::{server}/UserTokenServerInterceptor.java[tag=user-id-binding,indent=0]
+----
+
+[.column]
+* With `user_id` pinned to the subject, each user can only name their own sessions
+* After that, a session belongs to the first subject that uses it
+* Each refusal includes the correlation ID
+--
+
+[.notes]
+****
+There are two checks, and this first one does most of the work. Spark keys sessions by user and session id, so once the user is pinned to the authenticated subject, bob can only name sessions under his own subject.
+The second check, session ownership, covers anything left over.
+Refusals use specific gRPC status codes and include the correlation ID, so a user can quote it and an operator can search for it.
+****
+
+== One correlation ID across services
+
+image::{diagrams}/correlation.svg["One correlation ID, everywhere",opts=inline,role=diagram]
+
+[.notes]
+****
+The client generates a UUID. In Python it lasts for a `with correlation_id()` block, in Java for a scope, and in Rust for a session.
+It goes over gRPC as metadata. The AuthManager sends it to Polaris as `X-Request-ID`, which Polaris already writes into its MDC and audit events.
+The Spark log format copies Polaris's `[requestId,realm]` layout, so the lines are easy to compare.
+
+The correlation ID and the operation id are separate. One `collect()` makes two ExecutePlan calls, a block can run many statements, and Spark rejects a repeated operation id. The server logs both ids together.
+
+`make cid` searches every service's logs for one ID.
+****
+
+== Three clients, one server
+
+[cols="2,3,3,3",options=header]
+|===
+| |Python |JVM |Rust
+
+|Headers on every RPC
+|gRPC interceptor
+|gRPC interceptor
+|set when the session opens
+
+|`user_id` = JWT `sub`
+|yes
+|yes
+|yes
+
+|`operation_id`
+|patched private method
+|interceptor rewrites the message
+|the crate already sets it
+
+|Correlation scope
+|`with correlation_id()`
+|`CorrelationId.scope()`
+|one per session
+
+|Walkthrough
+|`make demo`
+|`make demo-jvm`
+|`make demo-rust`
+|===
+
+[.lead]
+The server doesn't change between clients. It's the same build and config, and it receives the same headers.
+
+[.notes]
+****
+All three clients share one token cache, so after you sign in with one you're signed in for the others.
+
+Python needs one private hook. PySpark never sets `operation_id`, so the client patches that private method on its own instance only.
+The JVM client only uses public API. Its jar moves gRPC to a different package than the server's jar does, so client and server interceptors can't share a type. It also needs `--add-opens` for Arrow.
+Rust didn't need anything for `operation_id`. It's also the only client that can't scope a correlation ID to a block, because the crate fixes a session's headers when the session is created.
+****
+
+== Jobs with no user
+
+* All three clients have a `ClientCredentialsTokenProvider` for jobs that hold a client id and secret
+* Keycloak issues the token to `service-account-spark-job`. Nothing after the client changes
+* Polaris checks that account's own grants. It can read `shared` and gets a 403 on `restricted`, like bob
+* Polaris has to know about the service account in advance, the same as any other principal
+* There's no refresh token and nothing is written to disk. When the token goes stale, the client runs the grant again
+
+[.notes]
+****
+People usually ask about this: what about jobs that run unattended?
+They take the same path. The subject is the service account. The server pins `user_id` to it and exchanges the token, and Polaris authorises it by name.
+
+All three clients use `client_secret_basic` and form-urlencode each half before base64, as RFC 6749 says. Rust's reqwest `basic_auth` skips that step. It works until a secret contains a `%` or a `+`.
+****
+
+== The same identity in SPARQL
+
+image::{diagrams}/sparql.svg["The same identity, through a SPARQL endpoint",opts=inline,role=diagram]
+
+[.notes]
+****
+Ontop is a virtual knowledge graph. It turns SPARQL into SQL over the same Iceberg tables and runs it through Spark Connect's JDBC driver.
+
+Ontop already knows who sent the query, but it had no way to pass that on. Its connection pool is shared by the whole process and built once from a single JDBC URL, so every SPARQL query reached Spark as the endpoint.
+The fork (larsw/ontop, branch version5-auth-context) adds three opt-in changes. The query context is available when a connection is acquired, a new pool builds each request's JDBC URL from it, and Ontop uses the caller's correlation ID as its query id.
+On our side, the Spark Connect JDBC driver turns URL parameters it doesn't know into gRPC metadata, which is where the plugin reads them.
+
+The endpoint has no credentials for the data. The table definitions it needs are in a file, so it never has to sign in as anyone.
+
+Click. alice and bob send the same query to the same endpoint, and Polaris refuses bob.
+The browser console at localhost:3002 shows the same thing.
+****
+
+== Lineage
+
+image::{diagrams}/lineage.svg["Where per-user catalog auth and lineage collide",opts=inline,role=diagram]
+
+[.notes]
+****
+OpenLineage runs as a normal SparkListener, so job-level lineage works: each test run produces eight jobs in Marquez.
+
+Click. Dataset-level lineage doesn't work. To name a dataset, OpenLineage loads the table from the catalog on the listener bus thread. That thread has no job tag, so the AuthManager has no identity and sends the call without a token, and Polaris returns 401.
+It's the same thread problem as before. If the catalog authorises each user, only a user can read it, and the lineage collector isn't one.
+
+Click. The job-start event does carry the tags, though, so each job-backed run gets a facet with the correlation ID and principal. That's enough to record who ran it, but not to call the catalog.
+
+We see three fixes. We could give the collector a service identity, but that brings back the shared credential the PoC removes. We could resolve datasets from the query plan. Or we could pass the identity to the listener, keyed by run. Only the last one keeps both per-user access and dataset lineage.
+****
+
+== What we found upstream
+
+[cols="1,9",options=header]
+|===
+|§ |Finding
+
+|1
+|Spark Connect relocates gRPC, but its docs name the original interface
+
+|3
+|Spark Connect doesn't tie a session to the authenticated caller
+
+|4
+|Job tags are the only public way across the thread boundary, and their format is internal
+
+|5
+|PySpark never sets `operation_id`, and one statement can be several operations
+
+|9
+|RFC 8693 `audience` filters audiences but doesn't add them
+
+|14
+|PySpark's session finaliser can deadlock against gRPC, in about one run in four
+
+|15
+|Per-user catalog authorisation conflicts with out-of-band lineage collection
+|===
+
+[.source]
+Each finding was checked against source code, published jars or the running stack. Details in FINDINGS.md. Versions: Spark 4.1.3, Iceberg 1.11.0, Polaris 1.7.0, Keycloak 26.7.0.
+
+[.notes]
+****
+FINDINGS.md has seventeen of these, with the evidence for each. Two that aren't on the slide: §6, `UserContext.extensions` works but whatever you put in it shows up in the Spark UI, and §16, Ontop couldn't pass the caller to the database, which the SPARQL slide covered.
+
+Some stories behind the ones listed:
+
+§1: The docs say to implement `io.grpc.ServerInterceptor`, but the jar doesn't contain `io.grpc` at all. It's been moved to `org.sparkproject.connect.grpc`. Code written against the docs compiles and then fails when the server starts.
+
+§14 looked like a flaky test for an afternoon. The session finaliser shuts down a thread pool shared by the whole class and waits for it. If the garbage collector runs the finaliser while you're in a gRPC call, the process hangs. Stopping sessions explicitly made the hang rarer, which was worse, because it looked fixed. Keeping the sessions alive until exit fixed it, and we got 45 clean runs.
+
+We think several of these should be reported upstream, starting with §1 and §3.
+****
+
+== Tests
+
+[.columns]
+--
+[.column]
+.Against the running stack: 43
+* 31 in Python, with pytest
+* 6 each from the JVM and Rust clients
+* Two users run at the same time, so a leak between them would show up
+* Assertions on the logs of each service and on MinIO's audit log
+
+[.column]
+.With nothing running: 109
+* 24 for the Java plugin
+* 34 for the JVM client and 19 for Rust
+* 32 for the Python client
+* `make test-container` runs them all inside the compose network
+--
+
+[.notes]
+****
+The end-to-end tests check log lines as well as return values. They assert that the same correlation ID is in Spark's and Polaris's logs, that the key the executor sent to MinIO was temporary and had a session policy, and that bob's hijack attempt was refused.
+The two users run at the same time on purpose. With sequential tests, a broken per-operation lookup would still pass.
+****
+
+== Try it
+
+[source,shell]
+----
+./install.sh       # checks the toolchain; asks before touching /etc/hosts
+make build up      # the Java plugin, the Spark image, then the stack
+make demo          # two users, device flow; or demo-jvm, demo-rust
+make seed demo-sparql
+make cid CID=<the id the demo printed>
+make test
+----
+
+* Sign in as alice or bob at the Polaris console, http://localhost:3000, and the SPARQL console, http://localhost:3002
+* Marquez, at http://localhost:3001, shows lineage runs with the user and correlation ID
+
+[.notes]
+****
+`install.sh` doesn't run anything as root by itself. It prints the command and waits for you to say yes.
+The `/etc/hosts` entries are there because Keycloak puts one issuer URL in every token, and the browser, the client and the containers all have to use that same hostname.
+The consoles are the exception. You have to open them on localhost, because PKCE only works in a secure context.
+Sandbox logins are alice/alice and bob/bob.
+****
+
+== Not in scope
+
+* TLS between the client and the Connect server
+* A token expiring in the middle of a long query
+* Polaris persistence: it's in memory and is set up again on every restart
+* Secrets management: all the credentials in the sandbox are throwaway
+* Dataset-level lineage, which needs the identity passed to the listener as well
+
+[.notes]
+****
+We left these out on purpose. TODO.md records the twenty-three design decisions and the reason for each one. Several were forced by how the upstream projects behave.
+The lineage gap has the most interesting fix, because it's the same job-tag approach used one thread further along.
+****
+
+[.closing,state=bookend,background-color=#1b2a41]
+== Questions?
+
+[.lead]
+README.md walks through the PoC, FINDINGS.md has the evidence for each finding, and TODO.md lists the design decisions.
+
+[.notes]
+****
+Good topics to start with: the session hijacking gap, the dependency on the job tag format, and the lineage conflict.
+****

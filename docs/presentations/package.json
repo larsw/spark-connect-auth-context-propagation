@@ -1,0 +1,17 @@
+{
+  "name": "spark-connect-poc-presentations",
+  "private": true,
+  "description": "This PoC's slide decks, written in AsciiDoc and converted to reveal.js. See build.sh and render-pdf.sh.",
+  "devDependencies": {
+    "@asciidoctor/reveal.js": "5.2.0",
+    "@fontsource/roboto": "5.3.0",
+    "@fontsource/roboto-mono": "5.3.0",
+    "@highlightjs/cdn-assets": "10.7.3",
+    "decktape": "3.16.1"
+  },
+  "overrides": {
+    "@asciidoctor/cli": {
+      "yargs": "17.7.3"
+    }
+  }
+}

@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 416" width="1184" height="416" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="vending-title vending-desc">
+  <title id="vending-title">Per-caller credentials, vended by Polaris</title>
+  <desc id="vending-desc">alice reads restricted.salaries: Polaris allows it, because her engineer role covers the whole catalog, and vends a temporary STS key for alice whose session policy allows GetObject on that table's prefix only; MinIO serves it, and its audit log shows a temporary key with parent minio_root and a session policy attached. bob reads shared.events: allowed by shared_reader, and he gets his own key scoped to that table's prefix. bob reads restricted.salaries: Polaris answers 403, because he has no grant there, and no key is ever issued. No Spark container holds an S3 credential, so a read that succeeds can only have used a key vended for that caller.</desc>
+  <defs>
+    <marker id="vending-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="vending-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="vending-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="vending-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+  <text class="d-xs d-b" x="0" y="16">THE CALLER</text>
+  <text class="d-xs d-b" x="260" y="16">POLARIS DECIDES</text>
+  <text class="d-xs d-b" x="550" y="16">AND VENDS</text>
+  <text class="d-xs d-b" x="960" y="16">THE DATA PLANE</text>
+  <g class="fragment" data-fragment-index="1">
+  <rect class="d-box2" x="0" y="34" width="220" height="96" rx="8"/>
+  <text class="d-t d-b" x="16" y="70">alice reads</text>
+  <text class="d-s d-m" x="16" y="100">restricted.salaries</text>
+  <line class="d-line" x1="220" y1="82" x2="258" y2="82" marker-end="url(#vending-arrow)"/>
+  <rect class="d-ok" x="260" y="34" width="250" height="96" rx="8"/>
+  <text class="d-t d-b d-okt" x="276" y="70">allowed</text>
+  <text class="d-s" x="276" y="100">engineer: whole catalog</text>
+  <line class="d-line" x1="510" y1="82" x2="548" y2="82" marker-end="url(#vending-arrow)"/>
+  <rect class="d-token" x="550" y="34" width="370" height="96" rx="8"/>
+  <text class="d-s d-b" x="566" y="62">a temporary STS key for alice</text>
+  <text class="d-xs" x="566" y="88">session policy: GetObject on</text>
+  <text class="d-xs d-m" x="566" y="112">warehouse/poc/restricted/salaries/…</text>
+  <line class="d-line" x1="920" y1="82" x2="958" y2="82" marker-end="url(#vending-arrow)"/>
+  <rect class="d-ok" x="960" y="34" width="224" height="96" rx="8"/>
+  <text class="d-t d-b" x="976" y="70">MinIO serves it</text>
+  <text class="d-xs" x="976" y="100">audit: parent minio_root,</text>
+  <text class="d-xs" x="976" y="120">sessionPolicy attached</text>
+  </g>
+<g class="fragment" data-fragment-index="2">
+  <rect class="d-box2" x="0" y="154" width="220" height="96" rx="8"/>
+  <text class="d-t d-b" x="16" y="190">bob reads</text>
+  <text class="d-s d-m" x="16" y="220">shared.events</text>
+  <line class="d-line" x1="220" y1="202" x2="258" y2="202" marker-end="url(#vending-arrow)"/>
+  <rect class="d-ok" x="260" y="154" width="250" height="96" rx="8"/>
+  <text class="d-t d-b d-okt" x="276" y="190">allowed</text>
+  <text class="d-s" x="276" y="220">shared_reader: shared only</text>
+  <line class="d-line" x1="510" y1="202" x2="548" y2="202" marker-end="url(#vending-arrow)"/>
+  <rect class="d-token" x="550" y="154" width="370" height="96" rx="8"/>
+  <text class="d-s d-b" x="566" y="182">a temporary STS key for bob</text>
+  <text class="d-xs" x="566" y="208">session policy: GetObject on</text>
+  <text class="d-xs d-m" x="566" y="232">warehouse/poc/shared/events/…</text>
+  <line class="d-line" x1="920" y1="202" x2="958" y2="202" marker-end="url(#vending-arrow)"/>
+  <rect class="d-ok" x="960" y="154" width="224" height="96" rx="8"/>
+  <text class="d-t d-b" x="976" y="190">MinIO serves it</text>
+  <text class="d-xs" x="976" y="220">audit: parent minio_root,</text>
+  <text class="d-xs" x="976" y="240">sessionPolicy attached</text>
+  </g>
+<g class="fragment" data-fragment-index="3">
+  <rect class="d-box2" x="0" y="274" width="220" height="96" rx="8"/>
+  <text class="d-t d-b" x="16" y="310">bob reads</text>
+  <text class="d-s d-m" x="16" y="340">restricted.salaries</text>
+  <line class="d-line" x1="220" y1="322" x2="258" y2="322" marker-end="url(#vending-arrow)"/>
+  <rect class="d-no" x="260" y="274" width="250" height="96" rx="8"/>
+  <text class="d-t d-b d-not" x="276" y="310">403 Forbidden</text>
+  <text class="d-s" x="276" y="340">no grant on restricted</text>
+  <text class="d-t d-i d-not" x="566" y="330">no key issued</text>
+  </g>
+  <g class="fragment" data-fragment-index="4">
+  <text class="d-s d-i" x="0" y="408">Spark has no S3 credentials, so a successful read must have used a key vended for that caller.</text>
+  </g>
+</svg>

@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 468" width="1184" height="468" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="stack-title stack-desc">
+  <title id="stack-title">The stack</title>
+  <desc id="stack-desc">Three Spark Connect clients, in Python, Java and Rust, call one Spark Connect server, which carries a plugin: an interceptor that validates, pins and exchanges the caller's token, an identity holder keyed by operation, and an Iceberg AuthManager that sends a Bearer token and X-Request-ID. The server exchanges tokens at Keycloak, one realm for everything, and loads tables from Apache Polaris, which authorises by principal and vends temporary S3 keys. A Spark worker, with no S3 key of its own, reads MinIO with vended keys only. A forked Ontop VKG answers SPARQL by calling the server over JDBC as the caller, behind a SPARQL console; the Polaris console calls Polaris as the signed-in user; and Marquez receives lineage from an OpenLineage listener in the server, each run naming its caller and correlation ID.</desc>
+  <defs>
+    <marker id="stack-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="stack-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="stack-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="stack-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+  <g transform="translate(0,28)">
+  <text class="d-xs d-b" x="0" y="-12">CALLERS</text>
+  <text class="d-xs d-b" x="330" y="-12">COMPUTE</text>
+  <text class="d-xs d-b" x="780" y="-12">IDENTITY, CATALOG, STORAGE</text>
+
+  <!-- the three clients and the server -->
+  <rect class="d-box2" x="0" y="0" width="240" height="52" rx="8"/>
+  <text class="d-t d-b" x="16" y="33">PySpark client</text>
+  <rect class="d-box2" x="0" y="64" width="240" height="52" rx="8"/>
+  <text class="d-t d-b" x="16" y="97">JVM client</text>
+  <rect class="d-box2" x="0" y="128" width="240" height="52" rx="8"/>
+  <text class="d-t d-b" x="16" y="161">Rust client</text>
+  <line class="d-line" x1="240" y1="26" x2="328" y2="26" marker-end="url(#stack-arrow)"/>
+  <line class="d-line" x1="240" y1="90" x2="328" y2="90" marker-end="url(#stack-arrow)"/>
+  <line class="d-line" x1="240" y1="154" x2="328" y2="154" marker-end="url(#stack-arrow)"/>
+  <rect class="d-box" x="330" y="0" width="370" height="196" rx="8"/>
+  <text class="d-t d-b" x="346" y="28">Spark Connect server</text>
+  <rect class="d-box3" x="346" y="42" width="338" height="42" rx="6"/>
+  <text class="d-s" x="360" y="69">interceptor: checks and exchanges token</text>
+  <rect class="d-box3" x="346" y="92" width="338" height="42" rx="6"/>
+  <text class="d-s" x="360" y="119">identity holder, keyed by operation</text>
+  <rect class="d-box3" x="346" y="142" width="338" height="42" rx="6"/>
+  <text class="d-s" x="360" y="169">AuthManager: Bearer + X-Request-ID</text>
+
+  <rect class="d-box2" x="780" y="0" width="404" height="70" rx="8"/>
+  <text class="d-t d-b" x="796" y="26">Keycloak</text>
+  <text class="d-xs" x="796" y="48">one realm for all clients and the server</text>
+  <line class="d-line" x1="700" y1="50" x2="778" y2="50" marker-end="url(#stack-arrow)"/>
+  <text class="d-xs d-c d-halo" x="739" y="42">RFC 8693</text>
+  <rect class="d-box2" x="780" y="100" width="404" height="96" rx="8"/>
+  <text class="d-t d-b" x="796" y="128">Apache Polaris</text>
+  <text class="d-xs" x="796" y="152">authorises by principal, from the token’s claims</text>
+  <text class="d-xs" x="796" y="174">vends temporary S3 keys, one table at a time</text>
+  <line class="d-line" x1="700" y1="163" x2="778" y2="163" marker-end="url(#stack-arrow)"/>
+  <text class="d-xs d-c d-halo" x="739" y="155">loadTable</text>
+
+  <!-- data plane -->
+  <rect class="d-box2" x="330" y="236" width="190" height="60" rx="8"/>
+  <text class="d-t d-b" x="346" y="262">Spark worker</text>
+  <text class="d-xs" x="346" y="284">no S3 key of its own</text>
+  <line class="d-line" x1="425" y1="196" x2="425" y2="234" marker-end="url(#stack-arrow)"/>
+  <rect class="d-box2" x="560" y="236" width="140" height="60" rx="8"/>
+  <text class="d-t d-b" x="576" y="262">MinIO</text>
+  <text class="d-xs" x="576" y="284">vended keys only</text>
+  <line class="d-line" x1="520" y1="266" x2="558" y2="266" marker-end="url(#stack-arrow)"/>
+
+  <g class="fragment" data-fragment-index="1">
+  <!-- the same identity, from elsewhere -->
+  <rect class="d-box" x="0" y="236" width="240" height="60" rx="8"/>
+  <text class="d-t d-b" x="16" y="262">Ontop VKG (fork)</text>
+  <text class="d-xs" x="16" y="284">SPARQL, as the caller</text>
+  <path class="d-line" d="M240,266 H285 V184 H328" marker-end="url(#stack-arrow)"/>
+  <text class="d-xs d-halo" x="250" y="230">JDBC</text>
+  <rect class="d-box" x="0" y="330" width="240" height="60" rx="8"/>
+  <text class="d-t d-b" x="16" y="356">SPARQL console</text>
+  <text class="d-xs" x="16" y="378">React + YASGUI, PKCE</text>
+  <line class="d-line" x1="120" y1="330" x2="120" y2="298" marker-end="url(#stack-arrow)"/>
+  <rect class="d-box" x="780" y="236" width="404" height="60" rx="8"/>
+  <text class="d-t d-b" x="796" y="262">Polaris console</text>
+  <text class="d-xs" x="796" y="284">shows only what the signed-in user may see</text>
+  <line class="d-line" x1="982" y1="236" x2="982" y2="198" marker-end="url(#stack-arrow)"/>
+  <rect class="d-box" x="780" y="330" width="404" height="60" rx="8"/>
+  <text class="d-t d-b" x="796" y="356">Marquez</text>
+  <text class="d-xs" x="796" y="378">lineage runs, tagged with user and correlation ID</text>
+  <path class="d-line d-dash" d="M700,188 H740 V360 H778" marker-end="url(#stack-arrow)"/>
+  <text class="d-xs d-halo" x="760" y="312" transform="rotate(-90 760 312)">OpenLineage</text>
+  </g>
+
+  <text class="d-s d-i" x="0" y="432">Spark has no S3 credentials of its own.</text>
+  </g>
+</svg>

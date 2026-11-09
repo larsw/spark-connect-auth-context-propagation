@@ -211,6 +211,7 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
       // First: the claimed user_id must be the authenticated subject. Spark keys SessionHolder on
       // (userId, sessionId), so pinning userId partitions the whole session namespace by
       // authenticated identity, and makes our binding below agree with Spark's own keying.
+      // tag::user-id-binding[]
       String claimedUserId = coordinates.userId();
       if (claimedUserId != null
           && !claimedUserId.isBlank()
@@ -226,6 +227,7 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
             new Metadata());
         return;
       }
+      // end::user-id-binding[]
 
       // Second: a Connect session belongs to whoever first used it.
       Optional<String> owner =

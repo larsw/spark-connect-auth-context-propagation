@@ -32,3 +32,6 @@ docker/spark/jars/*.jar
 
 # Git worktrees created by tooling; never part of the project tree.
 .claude/worktrees/
+
+# Slide decks: built HTML and PDFs (docs/presentations/build.sh, render-pdf.sh)
+docs/build/

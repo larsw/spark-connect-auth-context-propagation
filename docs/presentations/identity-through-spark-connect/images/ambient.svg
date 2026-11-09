@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 412" width="1184" height="412" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="ambient-title ambient-desc">
+  <title id="ambient-title">Who reads the data: as shipped, and with this PoC</title>
+  <desc id="ambient-desc">As shipped, alice, bob and a nightly job all reach Spark Connect, which trusts whatever user_id the client sends and reaches the catalog with one service credential and object storage with one static S3 key, so the catalog only ever sees spark. With this PoC each caller presents its own token; Spark Connect validates it, pins user_id to it and exchanges it, Polaris authorises alice and refuses bob, and MinIO is read with a key vended for that caller and scoped to one table's prefix for minutes.</desc>
+  <defs>
+    <marker id="ambient-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="ambient-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="ambient-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="ambient-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+  <text class="d-t d-b" x="0" y="20">Spark Connect, as shipped</text>
+  <rect class="d-box" x="0" y="40" width="170" height="48" rx="24"/>
+  <text class="d-t d-c" x="85" y="71">alice</text>
+  <line class="d-line" x1="85" y1="88" x2="85" y2="138" marker-end="url(#ambient-arrow)"/>
+  <rect class="d-box" x="195" y="40" width="170" height="48" rx="24"/>
+  <text class="d-t d-c" x="280" y="71">bob</text>
+  <line class="d-line" x1="280" y1="88" x2="280" y2="138" marker-end="url(#ambient-arrow)"/>
+  <rect class="d-box" x="390" y="40" width="170" height="48" rx="24"/>
+  <text class="d-t d-c" x="475" y="71">a nightly job</text>
+  <line class="d-line" x1="475" y1="88" x2="475" y2="138" marker-end="url(#ambient-arrow)"/>
+  <rect class="d-box2" x="0" y="140" width="560" height="80" rx="8"/>
+  <text class="d-t d-b" x="16" y="172">Spark Connect</text>
+  <text class="d-s" x="16" y="200">user_id is whatever the client sends</text>
+  <line class="d-line" x1="135" y1="220" x2="135" y2="278" marker-end="url(#ambient-arrow)"/>
+  <text class="d-xs d-i" x="147" y="254">one service credential</text>
+  <rect class="d-box" x="0" y="280" width="270" height="90" rx="8"/>
+  <text class="d-t d-b" x="16" y="314">Catalog</text>
+  <text class="d-s" x="16" y="344">sees one caller: spark</text>
+  <line class="d-line" x1="425" y1="220" x2="425" y2="278" marker-end="url(#ambient-arrow)"/>
+  <text class="d-xs d-i" x="437" y="254">one static S3 key</text>
+  <rect class="d-box" x="290" y="280" width="270" height="90" rx="8"/>
+  <text class="d-t d-b" x="306" y="314">Object storage</text>
+  <text class="d-s" x="306" y="344">one key reads every table</text>
+  <text class="d-s d-b d-not" x="0" y="404">who read the salaries?  “spark”</text>
+  <line class="d-life" x1="592" y1="0" x2="592" y2="410"/>
+  <g class="fragment" data-fragment-index="1">
+  <text class="d-t d-b" x="624" y="20">With this PoC</text>
+  <rect class="d-token" x="624" y="40" width="170" height="48" rx="24"/>
+  <text class="d-t d-c" x="709" y="71">alice · JWT</text>
+  <line class="d-line" x1="709" y1="88" x2="709" y2="138" marker-end="url(#ambient-arrow)"/>
+  <rect class="d-token" x="819" y="40" width="170" height="48" rx="24"/>
+  <text class="d-t d-c" x="904" y="71">bob · JWT</text>
+  <line class="d-line" x1="904" y1="88" x2="904" y2="138" marker-end="url(#ambient-arrow)"/>
+  <rect class="d-token" x="1014" y="40" width="170" height="48" rx="24"/>
+  <text class="d-t d-c" x="1099" y="71">job · JWT</text>
+  <line class="d-line" x1="1099" y1="88" x2="1099" y2="138" marker-end="url(#ambient-arrow)"/>
+  <rect class="d-box2" x="624" y="140" width="560" height="80" rx="8"/>
+  <text class="d-t d-b" x="640" y="172">Spark Connect + plugin</text>
+  <text class="d-s" x="640" y="200">checks the token and exchanges it</text>
+  <line class="d-line" x1="759" y1="220" x2="759" y2="278" marker-end="url(#ambient-arrow)"/>
+  <text class="d-xs d-i" x="771" y="254">the caller’s own token</text>
+  <rect class="d-ok" x="624" y="280" width="270" height="90" rx="8"/>
+  <text class="d-t d-b" x="640" y="314">Polaris</text>
+  <text class="d-s" x="640" y="344">authorises alice, refuses bob</text>
+  <line class="d-line" x1="1049" y1="220" x2="1049" y2="278" marker-end="url(#ambient-arrow)"/>
+  <text class="d-xs d-i" x="1061" y="254">a vended key</text>
+  <rect class="d-ok" x="914" y="280" width="270" height="90" rx="8"/>
+  <text class="d-t d-b" x="930" y="314">MinIO</text>
+  <text class="d-s" x="930" y="344">temporary key for one table</text>
+  <text class="d-s d-b d-okt" x="624" y="404">who read the salaries?  “alice”</text>
+  </g>
+</svg>

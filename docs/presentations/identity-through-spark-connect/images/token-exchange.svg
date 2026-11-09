@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 400" width="1184" height="400" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="token-exchange-title token-exchange-desc">
+  <title id="token-exchange-title">RFC 8693 token exchange</title>
+  <desc id="token-exchange-desc">alice's client sends a JWT whose audience is spark-connect and whose authorised party is spark-cli. The server, a confidential Keycloak client called spark-connect, exchanges it at Keycloak with audience=polaris and receives a token with the same issuer and subject, audience polaris, authorised party spark-connect, principal name alice and principal role data_engineer. The server never forwards the user's token; the exchange is cached by SHA-256 of the inbound token until 30 seconds before expiry; and audience only filters the audiences a mapper has already added.</desc>
+  <defs>
+    <marker id="token-exchange-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="token-exchange-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="token-exchange-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="token-exchange-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+  <text class="d-s d-i" x="0" y="22">what alice’s client sends</text>
+  <rect class="d-token" x="0" y="36" width="340" height="214" rx="8"/>
+  <text class="d-s d-m" x="18" y="72">iss</text>
+  <text class="d-s d-m" x="150" y="72">…/realms/spark</text>
+  <text class="d-s d-m" x="18" y="106">sub</text>
+  <text class="d-s d-m" x="150" y="106">9682af88-…</text>
+  <text class="d-s d-m" x="18" y="140">aud</text>
+  <text class="d-s d-m d-b d-embt" x="150" y="140">spark-connect</text>
+  <text class="d-s d-m" x="18" y="174">azp</text>
+  <text class="d-s d-m" x="150" y="174">spark-cli</text>
+  <text class="d-s d-m" x="18" y="208">username</text>
+  <text class="d-s d-m" x="150" y="208">alice</text>
+  <text class="d-s d-m" x="18" y="242">roles</text>
+  <text class="d-s d-m" x="150" y="242">data_engineer</text>
+  <g class="fragment" data-fragment-index="1">
+  <line class="d-line" x1="340" y1="143" x2="418" y2="143" marker-end="url(#token-exchange-arrow)"/>
+  <rect class="d-box2" x="420" y="56" width="344" height="174" rx="8"/>
+  <text class="d-t d-b" x="438" y="88">Keycloak</text>
+  <text class="d-s" x="438" y="116">RFC 8693 standard token exchange</text>
+  <text class="d-xs d-m" x="438" y="148">subject_token=&lt;alice's JWT&gt;</text>
+  <text class="d-xs d-m" x="438" y="172">audience=polaris</text>
+  <text class="d-xs" x="438" y="204">asked by spark-connect, a confidential client</text>
+  <line class="d-line" x1="764" y1="143" x2="842" y2="143" marker-end="url(#token-exchange-arrow)"/>
+  </g>
+  <g class="fragment" data-fragment-index="2">
+  <text class="d-s d-i" x="844" y="22">what Polaris receives</text>
+  <rect class="d-token" x="844" y="36" width="340" height="214" rx="8"/>
+  <text class="d-s d-m" x="862" y="72">iss</text>
+  <text class="d-s d-m" x="994" y="72">…/realms/spark</text>
+  <text class="d-s d-m" x="862" y="106">sub</text>
+  <text class="d-s d-m" x="994" y="106">9682af88-…</text>
+  <text class="d-s d-m" x="862" y="140">aud</text>
+  <text class="d-s d-m d-b d-embt" x="994" y="140">polaris</text>
+  <text class="d-s d-m" x="862" y="174">azp</text>
+  <text class="d-s d-m" x="994" y="174">spark-connect</text>
+  <text class="d-s d-m" x="862" y="208">principal</text>
+  <text class="d-s d-m d-b d-embt" x="994" y="208">alice</text>
+  <text class="d-s d-m" x="862" y="242">roles</text>
+  <text class="d-s d-m d-b d-embt" x="994" y="242">data_engineer</text>
+  </g>
+  <g class="fragment" data-fragment-index="3">
+  <rect class="d-navy" x="0" y="284" width="1184" height="112" rx="8"/>
+  <text class="d-s d-on-navy" x="24" y="318">Polaris never sees the user’s original token, only one issued for Polaris with the same subject.</text>
+  <text class="d-s d-on-navy" x="24" y="346">Exchanged tokens are cached by SHA-256 of the inbound token until 30 s before they expire.</text>
+  <text class="d-s d-on-navy" x="24" y="374"><tspan class="d-m">audience=</tspan> only filters. A mapper has to add <tspan class="d-m">polaris</tspan> to the server’s tokens first (FINDINGS §9).</text>
+  </g>
+</svg>

@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 486" width="1184" height="486" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="thread-bridge-title thread-bridge-desc">
+  <title id="thread-bridge-title">Crossing the thread boundary with the job tag</title>
+  <desc id="thread-bridge-desc">On the gRPC handler thread, one per RPC, the interceptor validates, pins and exchanges, then puts the identity in PropagatedIdentityHolder, a static map keyed by operation and by session, which is why the jar is baked into Spark's own classpath. ThreadLocals and io.grpc.Context never arrive on the ExecutionThread, a fresh unpooled thread where Spark runs the plan and Iceberg loads the table. What does arrive is the job tag, SparkConnect_OperationTag_User_sub_Session_session-id_Operation_operation-id, which PropagatingRestAuthManager parses to look the identity up, before calling Polaris with alice's bearer token and an X-Request-ID.</desc>
+  <defs>
+    <marker id="thread-bridge-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="thread-bridge-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="thread-bridge-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="thread-bridge-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+  <rect class="d-zone" x="0" y="0" width="1184" height="120" rx="10"/>
+  <text class="d-s d-b" x="16" y="34">gRPC handler</text>
+  <text class="d-s d-b" x="16" y="56">thread</text>
+  <text class="d-xs d-i" x="16" y="80">one per RPC</text>
+  <rect class="d-box2" x="200" y="20" width="270" height="80" rx="8"/>
+  <text class="d-t d-b" x="216" y="52">interceptor</text>
+  <text class="d-s" x="216" y="80">checks and exchanges the token</text>
+
+  <g class="fragment" data-fragment-index="1">
+  <path class="d-line" d="M380,100 V210 H518" marker-end="url(#thread-bridge-arrow)"/>
+  <text class="d-xs d-halo" x="392" y="198">put</text>
+  <rect class="d-box3" x="520" y="148" width="440" height="124" rx="8"/>
+  <text class="d-s d-b d-m" x="538" y="178">PropagatedIdentityHolder</text>
+  <text class="d-xs d-m" x="538" y="210">by operation (user, session, op) → identity</text>
+  <text class="d-xs d-m" x="538" y="236">by session   (user, session)     → identity</text>
+  <text class="d-xs d-i" x="538" y="260">static, so the jar goes on Spark’s own classpath</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="2">
+  <line class="d-noline d-dash" x1="250" y1="100" x2="250" y2="298"/>
+  <path class="d-noline" d="M238,188 L262,212 M262,188 L238,212"/>
+  <text class="d-xs d-not d-halo" x="64" y="250">ThreadLocals and</text>
+  <text class="d-xs d-not d-halo" x="64" y="270">io.grpc.Context</text>
+  <text class="d-xs d-not d-halo" x="64" y="290">don’t carry over</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="3">
+  <rect class="d-zone" x="0" y="300" width="1184" height="120" rx="10"/>
+  <text class="d-s d-b" x="16" y="334">Execution</text>
+  <text class="d-s d-b" x="16" y="356">Thread</text>
+  <text class="d-xs d-i" x="16" y="380">fresh, unpooled</text>
+  <rect class="d-box2" x="200" y="320" width="270" height="80" rx="8"/>
+  <text class="d-t d-b" x="216" y="352">Spark runs the plan</text>
+  <text class="d-s" x="216" y="380">Iceberg loads the table</text>
+  <rect class="d-token" x="0" y="440" width="1184" height="44" rx="8"/>
+  <text class="d-s d-b d-embt" x="16" y="468">job tag</text>
+  <text class="d-xs d-m" x="96" y="468">SparkConnect_OperationTag_User_&lt;sub&gt;_Session_&lt;session id&gt;_Operation_&lt;operation id&gt;</text>
+  <line class="d-emline d-dash" x1="335" y1="440" x2="335" y2="402"/>
+  </g>
+
+  <g class="fragment" data-fragment-index="4">
+  <line class="d-line" x1="470" y1="360" x2="518" y2="360" marker-end="url(#thread-bridge-arrow)"/>
+  <rect class="d-box2" x="520" y="320" width="320" height="80" rx="8"/>
+  <text class="d-s d-b d-m" x="536" y="352">PropagatingRestAuthManager</text>
+  <text class="d-s" x="536" y="380">parses the tag, looks it up</text>
+  <line class="d-emline d-dash" x1="680" y1="440" x2="680" y2="402"/>
+  <line class="d-line" x1="680" y1="320" x2="680" y2="274" marker-end="url(#thread-bridge-arrow)"/>
+  <text class="d-xs d-halo" x="692" y="292">get by the tag’s coordinates</text>
+  <line class="d-line" x1="840" y1="360" x2="888" y2="360" marker-end="url(#thread-bridge-arrow)"/>
+  <rect class="d-ok" x="890" y="320" width="294" height="80" rx="8"/>
+  <text class="d-t d-b" x="906" y="348">Polaris</text>
+  <text class="d-xs d-m" x="906" y="374">Bearer &lt;alice's token&gt;</text>
+  <text class="d-xs d-m" x="906" y="392">X-Request-ID &lt;cid&gt;</text>
+  </g>
+</svg>

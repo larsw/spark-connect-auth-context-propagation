@@ -1,0 +1,461 @@
+/* The decks' look, after svipul's (../svipul/docs/presentations/theme/svipul.css), for reveal.js.
+   It goes over reveal.js's white theme.
+
+   Each slide's title sits in a band of deep navy with an ember rule under it, Spark's orange, and the
+   deck's name in small capitals at its far end; below it the slide reads as a page: Roboto,
+   near-black text, and code on light grey in highlight.css's colours. build.sh copies this directory
+   beside the decks, with the fonts inlined. */
+
+@font-face {
+  font-family: Roboto;
+  font-style: normal;
+  font-weight: 400;
+  src: url(fonts/roboto-latin-400-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: Roboto;
+  font-style: italic;
+  font-weight: 400;
+  src: url(fonts/roboto-latin-400-italic.woff2) format("woff2");
+}
+
+/* The UI sets its bold, 600, in Roboto's 500. */
+@font-face {
+  font-family: Roboto;
+  font-style: normal;
+  font-weight: 600;
+  src: url(fonts/roboto-latin-500-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: Roboto;
+  font-style: italic;
+  font-weight: 600;
+  src: url(fonts/roboto-latin-500-italic.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Roboto Mono";
+  font-style: normal;
+  font-weight: 400;
+  src: url(fonts/roboto-mono-latin-400-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Roboto Mono";
+  font-style: normal;
+  font-weight: 600;
+  src: url(fonts/roboto-mono-latin-500-normal.woff2) format("woff2");
+}
+
+:root {
+  --poc-navy: #1b2a41;
+  --poc-ember: #e25a1c;
+  --poc-band-text: #c9d3e3;
+  --poc-muted: #5d5d5d;
+  --poc-rule: #e1e1e1;
+  --poc-code-background: #fafafa;
+  /* Wide enough for the longest line the slides include, a 118-column test, in 15px code. */
+  --poc-gutter: 48px;
+  --poc-band: 72px;
+  --r-background-color: #fff;
+  --r-main-font: Roboto, sans-serif;
+  --r-main-font-size: 28px;
+  --r-main-color: #222;
+  --r-heading-font: Roboto, sans-serif;
+  --r-heading-color: #191919;
+  --r-heading-font-weight: 400;
+  --r-heading-line-height: 1.3;
+  --r-heading-text-transform: none;
+  --r-heading-margin: 0;
+  --r-code-font: "Roboto Mono", monospace;
+  --r-link-color: #1565c0;
+  --r-link-color-dark: #104d92;
+  --r-link-color-hover: #104d92;
+  --r-block-margin: 20px;
+  --r-selection-background-color: #24305e;
+}
+
+/* Slides are laid out from the top, as pages are, rather than centered.
+
+   A slide is a section in .slides, or, printed from a browser (index.html?print-pdf), in a .pdf-page
+   that reveal.js wraps it in: the rules for a slide say :is(.slides, .pdf-page) > section, so a
+   printed slide looks as a shown one does. */
+.reveal .slides {
+  text-align: left;
+}
+
+.reveal :is(.slides, .pdf-page) > section {
+  box-sizing: border-box;
+  height: 100%;
+  padding: 0 var(--poc-gutter) 40px;
+  line-height: 1.4;
+}
+
+/* The band: the slide's title in white on navy, an ember rule under it, the deck's name at its far end. */
+.reveal :is(.slides, .pdf-page) > section > h2 {
+  position: relative;
+  box-sizing: border-box;
+  height: var(--poc-band);
+  margin: 0 calc(-1 * var(--poc-gutter)) 32px;
+  padding: 0 calc(var(--poc-gutter) + 180px) 0 var(--poc-gutter);
+  background: var(--poc-navy);
+  box-shadow: inset 0 -4px 0 var(--poc-ember);
+  color: #fff;
+  font-size: 36px;
+  line-height: var(--poc-band);
+  white-space: nowrap;
+}
+
+.reveal :is(.slides, .pdf-page) > section > h2::after {
+  content: "identity \B7  spark connect";
+  position: absolute;
+  top: 0;
+  right: var(--poc-gutter);
+  color: var(--poc-band-text);
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+}
+
+.reveal p {
+  margin: 0 0 var(--r-block-margin);
+}
+
+.reveal .paragraph.lead p {
+  font-size: 1.08em;
+  color: var(--poc-muted);
+}
+
+.reveal ul,
+.reveal ol {
+  display: block;
+  margin: 0 0 var(--r-block-margin) 1.2em;
+}
+
+.reveal li + li {
+  margin-top: 0.45em;
+}
+
+.reveal ol li::marker {
+  color: var(--poc-navy);
+  font-weight: 600;
+}
+
+.reveal strong {
+  font-weight: 600;
+}
+
+/* Inline code. */
+.reveal p code,
+.reveal li code,
+.reveal td code {
+  padding: 0.1em 0.25em;
+  border-radius: 0.25em;
+  background: var(--poc-code-background);
+  color: #222;
+  font-size: 0.9em;
+}
+
+/* Listings: light grey with a hairline inset, set smaller than prose. */
+.reveal pre {
+  width: 100%;
+  margin: 0 0 var(--r-block-margin);
+  box-shadow: none;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.reveal pre code {
+  box-sizing: border-box;
+  max-height: none;
+  padding: 0.875em;
+  overflow: visible;
+  background: var(--poc-code-background);
+  box-shadow: inset 0 0 1.75px var(--poc-rule);
+  white-space: pre;
+  word-wrap: normal;
+}
+
+/* A block's title, such as a listing's: grey, italic, bold. */
+.reveal .listingblock > .title,
+.reveal .ulist > .title,
+.reveal .imageblock > .title {
+  margin-bottom: 0.3em;
+  color: var(--poc-muted);
+  font-size: 0.75em;
+  font-style: italic;
+  font-weight: 600;
+}
+
+/* Tables: hairline rules, a heavier one under the head. */
+.reveal table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 22px;
+}
+
+.reveal table th,
+.reveal table td {
+  padding: 0.45em 0.6em;
+  border: 0;
+  border-bottom: 1px solid var(--poc-rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.reveal table thead th {
+  border-bottom: 2.5px solid var(--poc-rule);
+  color: #191919;
+  font-weight: 600;
+}
+
+.reveal table tbody tr:nth-of-type(odd) {
+  background: var(--poc-code-background);
+}
+
+.reveal table tbody td:first-child {
+  font-weight: 600;
+}
+
+.reveal table p {
+  margin: 0;
+}
+
+.reveal .tableblock {
+  margin-bottom: var(--r-block-margin);
+}
+
+/* A quote: grey on light grey, behind a dark rule. */
+.reveal blockquote {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 var(--r-block-margin);
+  padding: 0.6em 1.4em;
+  border-left: 5px solid var(--poc-muted);
+  background: var(--poc-code-background);
+  box-shadow: none;
+  color: var(--poc-muted);
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+.reveal blockquote p {
+  margin: 0;
+}
+
+.reveal .quoteblock .attribution {
+  margin: -0.6em 0 var(--r-block-margin) 1.4em;
+  color: #8e8e8e;
+  font-size: 0.7em;
+}
+
+.reveal .quoteblock .attribution cite {
+  display: inline;
+}
+
+/* Where a slide's idea comes from ([.source]), as a footnote at the foot of the slide, clear of
+   the slide number. */
+.reveal .paragraph.source {
+  position: absolute;
+  right: calc(var(--poc-gutter) + 80px);
+  bottom: 20px;
+  left: var(--poc-gutter);
+  padding-top: 8px;
+  border-top: 1px solid var(--poc-rule);
+  color: var(--poc-muted);
+  font-size: 15px;
+}
+
+.reveal .paragraph.source p {
+  margin: 0;
+}
+
+.reveal .paragraph.source a {
+  color: var(--r-link-color);
+}
+
+/* A diagram drawn for the deck, inlined ([role=diagram], opts=inline) so that its parts can be
+   fragments. It is drawn at the width of the slide's content, and shrinks with it. */
+.reveal .imageblock.diagram {
+  margin: 0 0 var(--r-block-margin);
+}
+
+/* A box drawn flush with a diagram's edge, at x="0" or out to its full width, has half its stroke
+   outside the viewBox, which an SVG clips by default: that side would be drawn thinner than the rest. */
+.reveal .imageblock.diagram svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.reveal .imageblock.center {
+  text-align: center;
+}
+
+.reveal img {
+  margin: 0;
+}
+
+/* Two columns side by side: [.column] blocks in a [.columns] open block. A code column keeps the width
+   of its longest line, and the column beside it takes what is left. */
+.reveal .columns > .content {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+.reveal .columns > .content > .column {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.reveal .columns > .content > .column.code {
+  flex: 0 0 auto;
+}
+
+.reveal .columns > .content > .column.code + .column {
+  font-size: 24px;
+}
+
+/* The cover: a kicker in ember small capitals, then the title and the lead, over a navy foot. */
+.reveal :is(.slides, .pdf-page) > section.cover {
+  padding-top: 340px;
+}
+
+.reveal :is(.slides, .pdf-page) > section.cover > h2 {
+  height: auto;
+  margin: 0 0 24px;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  color: #191919;
+  font-size: 60px;
+  line-height: 1.2;
+  /* A long title takes two lines, as a band's cannot, of about the same length. */
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.reveal :is(.slides, .pdf-page) > section.cover > h2::after,
+.reveal :is(.slides, .pdf-page) > section.closing > h2::after {
+  content: none;
+}
+
+.reveal section.cover .paragraph.kicker {
+  position: absolute;
+  top: 250px;
+  left: var(--poc-gutter);
+}
+
+.reveal section.cover .paragraph.kicker p {
+  color: var(--poc-ember);
+  font-size: 24px;
+  font-weight: 600;
+  font-variant: small-caps;
+  letter-spacing: 0.1em;
+}
+
+.reveal section.cover::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 24px;
+  background: var(--poc-navy);
+  box-shadow: 0 -4px 0 var(--poc-ember);
+}
+
+/* The closing slide, all in the band's navy. */
+.reveal :is(.slides, .pdf-page) > section.closing {
+  padding-top: 110px;
+  color: #fff;
+}
+
+.reveal :is(.slides, .pdf-page) > section.closing > h2 {
+  height: auto;
+  margin: 0 0 16px;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 56px;
+  line-height: 1.2;
+}
+
+.reveal section.closing .paragraph.kicker p {
+  margin-bottom: 8px;
+  color: var(--poc-ember);
+  font-size: 22px;
+  font-weight: 600;
+  font-variant: small-caps;
+  letter-spacing: 0.1em;
+}
+
+.reveal section.closing .paragraph.lead p {
+  margin-bottom: 120px;
+  color: #c9cee0;
+}
+
+.reveal section.closing blockquote {
+  width: 70%;
+  border-left-color: #c9cee0;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4e7f0;
+}
+
+/* reveal.js's chrome, in the band's colours. */
+.reveal .progress {
+  color: var(--poc-navy);
+}
+
+.reveal .controls {
+  color: var(--poc-navy);
+}
+
+.reveal .slide-number {
+  background: transparent;
+  color: #8e8e8e;
+  font-family: Roboto, sans-serif;
+  font-size: 14px;
+}
+
+/* Printed from a browser (index.html?print-pdf), reveal.js breaks the page after every slide, the last
+   one too, which leaves a blank page at the end. */
+html.print-pdf .reveal .slides .pdf-page:last-of-type {
+  page-break-after: avoid;
+  break-after: avoid;
+}
+
+/* reveal.js also strips every printed slide's padding (padding: 0 !important): give the theme's back. */
+html.print-pdf .reveal .slides .pdf-page > section {
+  padding: 0 var(--poc-gutter) 40px !important;
+}
+
+html.print-pdf .reveal .slides .pdf-page > section.cover {
+  padding-top: 340px !important;
+}
+
+html.print-pdf .reveal .slides .pdf-page > section.closing {
+  padding-top: 110px !important;
+}
+
+/* The cover and the closing slide go unnumbered (state=bookend, which reveal.js puts on the viewport).
+   reveal.js sets the number's display itself, so it is hidden rather than taken out. */
+.reveal-viewport.bookend .slide-number {
+  visibility: hidden;
+}
+
+/* A verdict in running text or a table: [.ok]#read# and [.no]#403#. */
+.reveal .ok {
+  color: #1e7b3c;
+  font-weight: 600;
+}
+
+.reveal .no {
+  color: #b3261e;
+  font-weight: 600;
+}

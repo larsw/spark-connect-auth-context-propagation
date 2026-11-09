@@ -79,6 +79,7 @@ class PropagationInterceptor(
         self._token_header = token_header
         self._correlation_header = correlation_header
 
+    # tag::headers[]
     def _with_headers(self, details: grpc.ClientCallDetails) -> _CallDetails:
         metadata: List[Tuple[str, Any]] = list(details.metadata or [])
         metadata.append((self._token_header, self._token_provider.token()))
@@ -98,6 +99,7 @@ class PropagationInterceptor(
             getattr(details, "wait_for_ready", None),
             getattr(details, "compression", None),
         )
+        # end::headers[]
 
     def intercept_unary_unary(self, continuation, client_call_details, request):
         return continuation(self._with_headers(client_call_details), request)
