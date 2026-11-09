@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.apache.spark.connect.proto.AddArtifactsRequest;
 import org.apache.spark.connect.proto.AnalyzePlanRequest;
 import org.apache.spark.connect.proto.ArtifactStatusesRequest;
+import org.apache.spark.connect.proto.CloneSessionRequest;
 import org.apache.spark.connect.proto.ConfigRequest;
 import org.apache.spark.connect.proto.ExecutePlanRequest;
 import org.apache.spark.connect.proto.FetchErrorDetailsRequest;
@@ -199,7 +200,18 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
       }
       ConnectCoordinates coordinates = coordinatesOf(message);
       if (coordinates == null) {
-        super.onMessage(message);
+        // A request type this interceptor does not know names a session it cannot check, so it is
+        // refused rather than passed through. Passing it through is how CloneSession, added in
+        // Spark 4.1, used to skip both identity checks below.
+        closed = true;
+        LOG.warn(
+            "rejected {}: unrecognised request type {} [cid={}]",
+            method, message == null ? "null" : message.getClass().getName(), correlationId);
+        call.close(
+            Status.PERMISSION_DENIED.withDescription(
+                "This server cannot check " + method + " requests, so it refuses them "
+                    + "(correlation-id=" + correlationId + ")"),
+            new Metadata());
         return;
       }
 
@@ -244,6 +256,26 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
                     + correlationId + ")"),
             new Metadata());
         return;
+      }
+
+      // CloneSession names a second session, the one it creates. It is claimed the same way, so a
+      // clone cannot take over a session id another user already holds.
+      if (coordinates.newSessionId() != null && !coordinates.newSessionId().isBlank()) {
+        Optional<String> newOwner =
+            PropagatedIdentityHolder.claimSession(coordinates.newSessionId(), identity.subject());
+        if (newOwner.isPresent()) {
+          closed = true;
+          LOG.warn(
+              "rejected {}: subject {} tried to clone into session {} owned by subject {} [cid={}]",
+              method, identity.subject(), coordinates.newSessionId(), newOwner.get(), correlationId);
+          call.close(
+              Status.PERMISSION_DENIED.withDescription(
+                  "Session " + coordinates.newSessionId()
+                      + " belongs to a different authenticated user (correlation-id="
+                      + correlationId + ")"),
+              new Metadata());
+          return;
+        }
       }
 
       PropagatedIdentityHolder.put(
@@ -299,7 +331,7 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
    * if the client chose to send it -- stock PySpark does not, which is why the operation id is
    * optional here rather than assumed.
    */
-  private static ConnectCoordinates coordinatesOf(Object message) {
+  static ConnectCoordinates coordinatesOf(Object message) {
     if (message instanceof ExecutePlanRequest r) {
       return new ConnectCoordinates(
           r.getUserContext().getUserId(),
@@ -324,13 +356,29 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
       return new ConnectCoordinates(r.getUserContext().getUserId(), r.getSessionId());
     } else if (message instanceof FetchErrorDetailsRequest r) {
       return new ConnectCoordinates(r.getUserContext().getUserId(), r.getSessionId());
+    } else if (message instanceof CloneSessionRequest r) {
+      // The source session is checked like any other; the new one is claimed for the caller too,
+      // so a clone cannot be aimed at a session id someone else already owns.
+      return new ConnectCoordinates(
+          r.getUserContext().getUserId(),
+          r.getSessionId(),
+          null,
+          r.hasNewSessionId() ? r.getNewSessionId() : null);
     }
     return null;
   }
 
-  private record ConnectCoordinates(String userId, String sessionId, String operationId) {
+  /**
+   * The Connect coordinates a request names. {@code newSessionId} is set only for CloneSession,
+   * which names a second session: the one it creates.
+   */
+  record ConnectCoordinates(String userId, String sessionId, String operationId, String newSessionId) {
+    ConnectCoordinates(String userId, String sessionId, String operationId) {
+      this(userId, sessionId, operationId, null);
+    }
+
     ConnectCoordinates(String userId, String sessionId) {
-      this(userId, sessionId, null);
+      this(userId, sessionId, null, null);
     }
   }
 }

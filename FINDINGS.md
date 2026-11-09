@@ -627,3 +627,20 @@ the four shapes. The interceptor now implements stream-unary and stream-stream t
 `test_streaming_requests_are_intercepted_too` covers both.
 
 The JVM client is not affected: a `ClientInterceptor` sees every call shape through one method.
+
+## 19. CloneSession skipped the interceptor's identity checks
+
+Spark Connect 4.1 added a `CloneSession` RPC. Its request names a source session (`session_id`,
+with the usual `user_context`) and optionally the id of the session it creates (`new_session_id`).
+The interceptor works out a request's user and session from the message, one request type at a
+time, and passed any type it did not recognise straight through. `CloneSessionRequest` was one of
+those. So a clone was authenticated, but it skipped both identity checks: `user_id` did not have to
+be the token's subject, and the source session did not have to be the caller's. That is the session
+takeover of §3 again, by another RPC.
+
+The interceptor now reads `CloneSessionRequest`, checks the source session like any other, and
+claims `new_session_id` for the caller, so a clone cannot be aimed at a session id someone else
+holds. A request type it still does not recognise is refused rather than passed through, so the next
+RPC Spark adds fails closed. `ConnectCoordinatesTest` covers the parsing; no end-to-end test clones a
+session yet. Found by reviewing the AuthZEN branch, where the same gap also meant `CloneSession`
+never reached the PDP.
