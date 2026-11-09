@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 440" width="1184" height="440" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="delegation-title delegation-desc">
+  <title id="delegation-title">The policy decides what the S3 key may do</title>
+  <desc id="delegation-desc">Spark loads a table from Polaris with the header X-Iceberg-Access-Delegation set to vended-credentials. In the method authorizeLoadTable of IcebergCatalogHandler, Polaris first asks Cerbos for LOAD_TABLE_WITH_WRITE_DELEGATION, and only if that is refused asks for LOAD_TABLE_WITH_READ_DELEGATION. alice has the role data_engineer, whose rule allows every action, so write delegation is allowed, read is never asked, and the session policy of alice's vended key allows s3:PutObject, s3:DeleteObject, s3:GetObject and more. bob has the role analyst. LOAD_TABLE_WITH_WRITE_DELEGATION is not in the analyst rule, so the first ask is refused; the second ask, read delegation, is allowed because the table is in the shared namespace, and the session policy of bob's key allows s3:GetObject, s3:GetObjectVersion and s3:ListBucket, and no s3:PutObject or s3:DeleteObject. Three guard rails keep it that way: polaris_table.yaml leaves LOAD_TABLE_WITH_WRITE_DELEGATION out of the analyst rule; the test test_an_analyst_is_never_granted_write_delegation asks Cerbos directly and expects a refusal; and the test test_the_vended_credential_is_scoped_to_what_the_user_may_do reads the session policy MinIO embedded in bob's key.</desc>
+  <defs>
+    <marker id="delegation-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="delegation-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="delegation-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="delegation-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+
+  <!-- the load and the order Polaris asks in -->
+  <rect class="d-box2" x="0" y="2" width="300" height="94" rx="8"/>
+  <text class="d-t d-b" x="16" y="32">Spark loads a table</text>
+  <text class="d-xs d-m" x="16" y="58">X-Iceberg-Access-Delegation</text>
+  <text class="d-xs d-m" x="16" y="80">vended-credentials</text>
+  <line class="d-line" x1="300" y1="49" x2="338" y2="49" marker-end="url(#delegation-arrow)"/>
+  <rect class="d-box" x="340" y="2" width="843" height="94" rx="8"/>
+  <text class="d-s d-b d-m" x="356" y="30">IcebergCatalogHandler.authorizeLoadTable</text>
+  <text class="d-s" x="356" y="58">1. ask Cerbos for <tspan class="d-m">LOAD_TABLE_WITH_WRITE_DELEGATION</tspan></text>
+  <text class="d-s" x="356" y="82">2. only if that is refused, ask for <tspan class="d-m">LOAD_TABLE_WITH_READ_DELEGATION</tspan></text>
+
+  <text class="d-xs d-b" x="0" y="128">WHO</text>
+  <text class="d-xs d-b" x="206" y="128">1. WRITE DELEGATION</text>
+  <text class="d-xs d-b" x="482" y="128">2. READ DELEGATION</text>
+  <text class="d-xs d-b" x="758" y="128">SESSION POLICY OF THE VENDED S3 KEY</text>
+
+  <!-- alice -->
+  <g class="fragment" data-fragment-index="1">
+  <rect class="d-box2" x="0" y="140" width="170" height="80" rx="8"/>
+  <text class="d-t d-b" x="16" y="172">alice</text>
+  <text class="d-xs d-m" x="16" y="200">data_engineer</text>
+  <line class="d-line" x1="170" y1="180" x2="204" y2="180" marker-end="url(#delegation-arrow)"/>
+  <rect class="d-ok" x="206" y="140" width="240" height="80" rx="8"/>
+  <text class="d-t d-b d-okt" x="222" y="172">allowed</text>
+  <text class="d-xs" x="222" y="200">data_engineer rule: <tspan class="d-m">["*"]</tspan></text>
+  <line class="d-line" x1="446" y1="180" x2="756" y2="180" marker-end="url(#delegation-arrow)"/>
+  <text class="d-xs d-i" x="602" y="206" text-anchor="middle">read is not asked</text>
+  <rect class="d-token" x="758" y="140" width="425" height="80" rx="8"/>
+  <text class="d-s d-b" x="774" y="164">alice's key allows</text>
+  <text class="d-xs d-m" x="774" y="188">s3:PutObject, s3:DeleteObject,</text>
+  <text class="d-xs d-m" x="774" y="208">s3:GetObject, ...</text>
+  </g>
+
+  <!-- bob -->
+  <g class="fragment" data-fragment-index="2">
+  <rect class="d-box2" x="0" y="236" width="170" height="80" rx="8"/>
+  <text class="d-t d-b" x="16" y="268">bob</text>
+  <text class="d-xs d-m" x="16" y="296">analyst</text>
+  <line class="d-line" x1="170" y1="276" x2="204" y2="276" marker-end="url(#delegation-arrow)"/>
+  <rect class="d-no" x="206" y="236" width="240" height="80" rx="8"/>
+  <text class="d-t d-b d-not" x="222" y="268">refused</text>
+  <text class="d-xs" x="222" y="296">not in the analyst rule</text>
+  <line class="d-noline" x1="446" y1="276" x2="480" y2="276" marker-end="url(#delegation-arrow-no)"/>
+  <rect class="d-ok" x="482" y="236" width="240" height="80" rx="8"/>
+  <text class="d-t d-b d-okt" x="498" y="268">allowed</text>
+  <text class="d-xs" x="498" y="296">analyst, table in <tspan class="d-m">shared</tspan></text>
+  <line class="d-line" x1="722" y1="276" x2="756" y2="276" marker-end="url(#delegation-arrow)"/>
+  <rect class="d-token" x="758" y="236" width="425" height="80" rx="8"/>
+  <text class="d-s d-b" x="774" y="260">bob's key allows</text>
+  <text class="d-xs d-m" x="774" y="284">s3:GetObject, s3:GetObjectVersion,</text>
+  <text class="d-xs d-m" x="774" y="304">s3:ListBucket, ...</text>
+  </g>
+
+  <!-- guard rails -->
+  <g class="fragment" data-fragment-index="3">
+  <rect class="d-box" x="0" y="336" width="1183" height="96" rx="8"/>
+  <text class="d-s d-b" x="16" y="362">Guard rails</text>
+  <text class="d-xs" x="140" y="362"><tspan class="d-m">polaris_table.yaml</tspan> leaves <tspan class="d-m">LOAD_TABLE_WITH_WRITE_DELEGATION</tspan> out of the analyst rule</text>
+  <text class="d-xs" x="140" y="388"><tspan class="d-m">test_an_analyst_is_never_granted_write_delegation</tspan> asks Cerbos directly and expects a refusal</text>
+  <text class="d-xs" x="140" y="414"><tspan class="d-m">test_the_vended_credential_is_scoped_to_what_the_user_may_do</tspan> reads the session policy MinIO embedded in bob's key</text>
+  </g>
+</svg>

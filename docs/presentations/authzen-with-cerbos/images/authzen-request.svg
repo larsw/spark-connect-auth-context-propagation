@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 440" width="1184" height="440" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="authzen-request-title authzen-request-desc">
+  <title id="authzen-request-title">One AuthZEN access evaluation</title>
+  <desc id="authzen-request-desc">The request Polaris sends when bob loads shared.events with read delegation. On the left is Polaris, the fork, acting as the policy enforcement point. It asks for read delegation only after the policy has refused write delegation. In the middle is the request body in four parts. The subject has type user and id bob, with properties.roles analyst and properties.realm POLARIS: the Polaris principal and its activated principal roles. The action has the name LOAD_TABLE_WITH_READ_DELEGATION, the Polaris operation. The resource has type TABLE_LIKE and id poc_catalog/shared/events, with properties.name events and properties.parents CATALOG poc_catalog and NAMESPACE shared; the Cerbos policies match on the parents rather than on the joined id. The context carries request_id, the caller's correlation ID, which Polaris also sends as the X-Request-ID header, and realm POLARIS. On the right is Cerbos, the policy decision point, which receives the request at POST /access/v1/evaluation and decides it with polaris_table.yaml, whose analyst rule allows reads of tables whose parents include NAMESPACE shared. It answers decision true, and Polaris vends a read-only key. A footer names the other two endpoints: /access/v1/evaluations, the batch endpoint, where Polaris sends several intents of one request in one call with deny_on_first_deny and any false denies the whole request; and /.well-known/authzen-configuration, the discovery document from which Polaris finds both endpoints under its pdp-uri, http://cerbos:3592.</desc>
+  <defs>
+    <marker id="authzen-request-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="authzen-request-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="authzen-request-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="authzen-request-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+
+  <!-- the PEP and the empty request card -->
+  <text class="d-xs d-b" x="0" y="16">THE PEP</text>
+  <text class="d-xs d-b" x="238" y="16">THE REQUEST BODY</text>
+  <rect class="d-box2" x="0" y="30" width="190" height="196" rx="8"/>
+  <text class="d-t d-b" x="16" y="62">Polaris (fork)</text>
+  <text class="d-s" x="16" y="88">the policy</text>
+  <text class="d-s" x="16" y="110">enforcement point</text>
+  <text class="d-s" x="16" y="150">bob loads</text>
+  <text class="d-s d-m d-b" x="16" y="174">shared.events</text>
+  <text class="d-xs" x="16" y="204">with read delegation</text>
+  <line class="d-line" x1="190" y1="128" x2="236" y2="128" marker-end="url(#authzen-request-arrow)"/>
+  <rect class="d-zone" x="238" y="30" width="628" height="304" rx="8"/>
+
+  <g class="fragment" data-fragment-index="1">
+  <rect class="d-box2" x="250" y="42" width="604" height="64" rx="6"/>
+  <text class="d-s d-b" x="266" y="66">subject</text>
+  <text class="d-xs d-m" x="350" y="66">type: user   id: <tspan class="d-b">bob</tspan></text>
+  <text class="d-xs d-i" x="842" y="66" text-anchor="end">the Polaris principal</text>
+  <text class="d-xs d-m" x="350" y="90">properties.roles: [analyst]  properties.realm: POLARIS</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="2">
+  <rect class="d-box2" x="250" y="114" width="604" height="42" rx="6"/>
+  <text class="d-s d-b" x="266" y="140">action</text>
+  <text class="d-xs d-m" x="350" y="140">name: <tspan class="d-b">LOAD_TABLE_WITH_READ_DELEGATION</tspan></text>
+  <text class="d-xs d-i" x="842" y="140" text-anchor="end">the Polaris operation</text>
+  <rect class="d-note" x="0" y="250" width="190" height="64" rx="6"/>
+  <text class="d-xs" x="12" y="276">Polaris asks this only</text>
+  <text class="d-xs" x="12" y="298">after write is refused</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="3">
+  <rect class="d-box2" x="250" y="164" width="604" height="86" rx="6"/>
+  <text class="d-s d-b" x="266" y="188">resource</text>
+  <text class="d-xs d-m" x="350" y="188">type: TABLE_LIKE   id: poc_catalog/shared/events</text>
+  <text class="d-xs d-m" x="350" y="210">properties.name: events</text>
+  <text class="d-xs d-i" x="842" y="210" text-anchor="end">policies match on parents</text>
+  <text class="d-xs d-m" x="350" y="232">properties.parents: CATALOG poc_catalog, <tspan class="d-b">NAMESPACE shared</tspan></text>
+  </g>
+
+  <g class="fragment" data-fragment-index="4">
+  <rect class="d-cid" x="250" y="258" width="604" height="64" rx="6"/>
+  <text class="d-s d-b d-cidt" x="266" y="282">context</text>
+  <text class="d-xs d-m d-cidt" x="350" y="282">request_id: 5ca6e59a-…</text>
+  <text class="d-xs d-i d-cidt" x="842" y="282" text-anchor="end">correlation ID, also X-Request-ID</text>
+  <text class="d-xs d-m" x="350" y="304">realm: POLARIS</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="5">
+  <text class="d-xs d-b" x="914" y="16">THE PDP</text>
+  <line class="d-line" x1="866" y1="128" x2="912" y2="128" marker-end="url(#authzen-request-arrow)"/>
+  <rect class="d-box2" x="914" y="30" width="270" height="196" rx="8"/>
+  <text class="d-t d-b" x="930" y="62">Cerbos</text>
+  <text class="d-s" x="930" y="88">the policy decision point</text>
+  <text class="d-xs d-m" x="930" y="118">POST /access/v1/evaluation</text>
+  <text class="d-xs d-m" x="930" y="160">polaris_table.yaml</text>
+  <text class="d-xs" x="930" y="182">analyst rule: allow when</text>
+  <text class="d-xs" x="930" y="204">parents include NAMESPACE shared</text>
+  <line class="d-line" x1="1049" y1="226" x2="1049" y2="248" marker-end="url(#authzen-request-arrow)"/>
+  <rect class="d-ok" x="914" y="250" width="270" height="84" rx="8"/>
+  <text class="d-s d-m d-b d-okt" x="930" y="284">{"decision": true}</text>
+  <text class="d-xs" x="930" y="314">Polaris vends a read-only key</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="6">
+  <rect class="d-navy" x="0" y="354" width="1184" height="78" rx="8"/>
+  <text class="d-s d-on-navy" x="24" y="384"><tspan class="d-m">/access/v1/evaluations</tspan><tspan dx="12">batch:</tspan> several intents of one request in one call, with <tspan class="d-m">deny_on_first_deny</tspan>. One false decision denies the whole request.</text>
+  <text class="d-s d-on-navy" x="24" y="414"><tspan class="d-m">/.well-known/authzen-configuration</tspan><tspan dx="12">discovery:</tspan> Polaris finds both endpoints here, under its <tspan class="d-m">pdp-uri</tspan> <tspan class="d-m">http://cerbos:3592</tspan></text>
+  </g>
+</svg>

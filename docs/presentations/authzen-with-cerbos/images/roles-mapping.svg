@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 424" width="1184" height="424" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="roles-mapping-title roles-mapping-desc">
+  <title id="roles-mapping-title">How Cerbos reads an AuthZEN subject</title>
+  <desc id="roles-mapping-desc">On the left, the AuthZEN subject that Polaris and the Spark Connect plugin send: type user, id bob, and properties holding roles analyst and other properties. On the right, what Cerbos makes of it: principal.id is bob and principal.attr.roles is the list analyst, because the subject's properties become the principal's attributes. The principal's roles are not taken from properties.roles, only from a property named cerbos.roles, which neither caller sends: Cerbos's decision log shows principal.roles as the single role user, the subject's type. Below, four probes against cerbos 0.56.0, one rule per question and the same request: a rule with roles star gives true; a rule with roles analyst gives false; roles star with the condition "analyst" in request.principal.attr.roles gives true; roles star with a condition on request.resource.attr.parents gives true. The false one is logged as an ordinary deny with no warning, and the answer is the same as for a rule that correctly denies. Last, the fix used here, in derived_roles.yaml: a local variable V.roles set to P.attr.roles when it exists, and a derived role analyst with parentRoles star and the condition expr "analyst" in V.roles, so the rules can say derivedRoles analyst.</desc>
+  <defs>
+    <marker id="roles-mapping-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="roles-mapping-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="roles-mapping-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="roles-mapping-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+
+  <!-- the subject as sent -->
+  <rect class="d-box2" x="0" y="2" width="340" height="186" rx="8"/>
+  <text class="d-t d-b" x="16" y="30">AuthZEN subject</text>
+  <text class="d-xs d-m" x="16" y="64">{"type": "user",</text>
+  <text class="d-xs d-m" x="16" y="84"> "id": "bob",</text>
+  <text class="d-xs d-m" x="16" y="104"> "properties": {</text>
+  <text class="d-xs d-m" x="16" y="124">   "roles": ["analyst"], ...}}</text>
+  <text class="d-xs d-i" x="16" y="172">sent by Polaris and by the plugin</text>
+
+  <!-- what Cerbos makes of it -->
+  <rect class="d-box" x="430" y="2" width="752" height="186" rx="8"/>
+  <text class="d-t d-b" x="446" y="30">Cerbos principal</text>
+  <rect class="d-box3" x="446" y="62" width="720" height="32" rx="6"/>
+  <text class="d-xs d-m" x="462" y="83">principal.id = "bob"</text>
+  <rect class="d-box3" x="446" y="102" width="720" height="32" rx="6"/>
+  <text class="d-xs d-m" x="462" y="123">principal.attr.roles = ["analyst"]</text>
+  <text class="d-xs" x="790" y="123">subject properties become principal.attr</text>
+  <rect class="d-no" x="446" y="142" width="720" height="32" rx="6"/>
+  <text class="d-xs d-m d-not" x="462" y="163">principal.roles = ["user"]</text>
+  <text class="d-xs d-b d-not" x="790" y="163">the subject's type, as no cerbos.roles is sent</text>
+  <line class="d-line" x1="340" y1="79" x2="444" y2="79" marker-end="url(#roles-mapping-arrow)"/>
+  <line class="d-line" x1="340" y1="119" x2="444" y2="119" marker-end="url(#roles-mapping-arrow)"/>
+
+  <g class="fragment" data-fragment-index="1">
+  <!-- the probes from FINDINGS section 18 -->
+  <text class="d-xs d-b" x="0" y="226">PROBED AGAINST CERBOS 0.56.0, ONE RULE PER QUESTION</text>
+  <rect class="d-ok" x="0" y="238" width="680" height="34" rx="6"/>
+  <text class="d-xs d-m" x="12" y="260">roles: ["*"]</text>
+  <text class="d-xs d-m d-b d-okt" x="668" y="260" text-anchor="end">true</text>
+  <rect class="d-no" x="0" y="280" width="680" height="34" rx="6"/>
+  <text class="d-xs d-m" x="12" y="302">roles: ["analyst"]</text>
+  <text class="d-xs d-i d-not" x="190" y="302">no warning: logged as an ordinary deny</text>
+  <text class="d-xs d-m d-b d-not" x="668" y="302" text-anchor="end">false</text>
+  <rect class="d-ok" x="0" y="322" width="680" height="34" rx="6"/>
+  <text class="d-xs d-m" x="12" y="344">roles: ["*"], condition "analyst" in request.principal.attr.roles</text>
+  <text class="d-xs d-m d-b d-okt" x="668" y="344" text-anchor="end">true</text>
+  <rect class="d-ok" x="0" y="364" width="680" height="34" rx="6"/>
+  <text class="d-xs d-m" x="12" y="386">roles: ["*"], condition on request.resource.attr.parents</text>
+  <text class="d-xs d-m d-b d-okt" x="668" y="386" text-anchor="end">true</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="2">
+  <!-- the fix used in this branch -->
+  <text class="d-xs d-b" x="720" y="226">THE FIX USED HERE</text>
+  <rect class="d-box2" x="720" y="238" width="462" height="184" rx="8"/>
+  <text class="d-s d-b" x="736" y="262">derived_roles.yaml</text>
+  <text class="d-xs d-m" x="736" y="286">V.roles = has(P.attr.roles) ? P.attr.roles : []</text>
+  <text class="d-xs d-m" x="736" y="306">- name: analyst</text>
+  <text class="d-xs d-m" x="736" y="324">  parentRoles: ["*"]</text>
+  <text class="d-xs d-m" x="736" y="342">  condition:</text>
+  <text class="d-xs d-m" x="736" y="360">    match:</text>
+  <text class="d-xs d-m" x="736" y="378">      expr: '"analyst" in V.roles'</text>
+  <text class="d-xs" x="736" y="408">Rules then say</text>
+  <text class="d-xs d-m d-b" x="842" y="408">derivedRoles: [analyst]</text>
+  </g>
+</svg>

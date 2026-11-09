@@ -8,6 +8,7 @@ grey, and diagrams drawn as SVG.
 | Deck | What it covers |
 | --- | --- |
 | `identity-through-spark-connect` | A tour of the PoC: the problem, the stack, the path a query takes, the four hops (wire, token exchange, thread boundary, Polaris and vended keys), session integrity, the correlation ID, three clients, jobs, SPARQL, the lineage conflict, the upstream findings and how it is verified. |
+| `authzen-with-cerbos` | The `feat/authzen-cerbos` branch: Polaris and the Spark Connect plugin ask Cerbos for authorization decisions over AuthZEN. What changes from main, the request format, both enforcement points, the policies, the Cerbos roles mapping, write delegation and the S3 key, what stays in code, the comparison with Keycloak as the PDP, the tests, and the costs. |
 
 ## Building
 

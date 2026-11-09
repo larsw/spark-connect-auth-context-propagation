@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 430" width="1184" height="430" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="correlation-pdp-title correlation-pdp-desc">
+  <title id="correlation-pdp-title">One ID reaches the PDP</title>
+  <desc id="correlation-pdp-desc">The client mints a UUID and sends it to Spark Connect as x-correlation-id gRPC metadata; if it sends none, the plugin mints srv- followed by a UUID. In the Spark Connect plugin, UserTokenServerInterceptor puts the ID in the logging MDC as correlationId, and its AuthZenClient sends it to Cerbos on every RPC it asks about, twice per evaluation: as the X-Request-ID header and as context.request_id in the body. PropagatingRestAuthManager sends the same ID to Polaris as X-Request-ID. In the Polaris fork, RequestIdFilter takes the inbound X-Request-ID as the request id, and AuthzenPolarisAuthorizer sends that id to Cerbos on every operation, again as X-Request-ID and context.request_id, and logs it on each denial. Cerbos serves the AuthZEN endpoints /access/v1/evaluation and /access/v1/evaluations, and its config.yaml writes every decision to stdout, keeping the x-request-id metadata key, so the decision is in docker compose logs cerbos. make cid CID= followed by the UUID greps the spark-connect, polaris and cerbos logs for it.</desc>
+  <defs>
+    <marker id="correlation-pdp-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="correlation-pdp-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="correlation-pdp-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="correlation-pdp-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+
+  <text class="d-xs d-b" x="0" y="16">CALLER</text>
+  <text class="d-xs d-b" x="290" y="16">ENFORCEMENT POINTS</text>
+  <text class="d-xs d-b" x="840" y="16">DECISION POINT</text>
+
+  <!-- the client mints the ID -->
+  <rect class="d-cid" x="0" y="28" width="220" height="172" rx="8"/>
+  <text class="d-t d-b d-cidt" x="16" y="58">Client</text>
+  <text class="d-s" x="16" y="88">mints a UUID and</text>
+  <text class="d-s" x="16" y="110">sends it in gRPC</text>
+  <text class="d-s" x="16" y="132">metadata as</text>
+  <text class="d-xs d-m d-cidt" x="16" y="166">x-correlation-id</text>
+  <rect class="d-note" x="0" y="236" width="220" height="80" rx="4"/>
+  <text class="d-xs" x="14" y="260">If the client sends none,</text>
+  <text class="d-xs" x="14" y="282">the plugin mints</text>
+  <text class="d-xs d-m" x="14" y="304">srv-&lt;uuid&gt;</text>
+
+  <path class="d-cidline" d="M220,96 H288" marker-end="url(#correlation-pdp-arrow-cid)"/>
+
+  <!-- the plugin -->
+  <rect class="d-box" x="290" y="28" width="400" height="172" rx="8"/>
+  <text class="d-t d-b" x="306" y="56">Spark Connect plugin</text>
+  <rect class="d-box3" x="306" y="68" width="368" height="56" rx="6"/>
+  <text class="d-s d-b" x="320" y="90">UserTokenServerInterceptor</text>
+  <text class="d-xs" x="320" y="112">puts it in the MDC as correlationId</text>
+
+  <!-- the plugin asks Cerbos -->
+  <g class="fragment" data-fragment-index="1">
+  <rect class="d-box2" x="841" y="28" width="342" height="324" rx="8"/>
+  <text class="d-t d-b" x="856" y="56">Cerbos</text>
+  <text class="d-xs d-m" x="856" y="80">/access/v1/evaluation(s)</text>
+  <rect class="d-cid" x="856" y="94" width="312" height="36" rx="6"/>
+  <text class="d-xs d-m d-cidt" x="870" y="117">X-Request-ID</text>
+  <text class="d-xs" x="1040" y="117">header</text>
+  <rect class="d-cid" x="856" y="138" width="312" height="36" rx="6"/>
+  <text class="d-xs d-m d-cidt" x="870" y="161">context.request_id</text>
+  <text class="d-xs" x="1040" y="161">body</text>
+  <path class="d-cidline" d="M690,112 H838" marker-end="url(#correlation-pdp-arrow-cid)"/>
+  <text class="d-xs d-c d-halo" x="764" y="104">each checked RPC</text>
+  <text class="d-xs d-c d-halo" x="764" y="132">AuthZenClient</text>
+  </g>
+
+  <!-- the AuthManager, Polaris, and Polaris asks Cerbos -->
+  <g class="fragment" data-fragment-index="2">
+  <rect class="d-box3" x="306" y="132" width="368" height="56" rx="6"/>
+  <text class="d-s d-b" x="320" y="154">PropagatingRestAuthManager</text>
+  <text class="d-xs" x="320" y="176">sends it to Polaris as X-Request-ID</text>
+  <path class="d-cidline" d="M490,200 V234" marker-end="url(#correlation-pdp-arrow-cid)"/>
+  <text class="d-xs d-m d-cidt d-halo" x="502" y="222">X-Request-ID</text>
+  <rect class="d-box" x="290" y="236" width="400" height="116" rx="8"/>
+  <text class="d-t d-b" x="306" y="262">Apache Polaris (fork)</text>
+  <text class="d-xs" x="306" y="286">RequestIdFilter takes the inbound X-Request-ID</text>
+  <text class="d-xs" x="306" y="308">as its request id. AuthzenPolarisAuthorizer</text>
+  <text class="d-xs" x="306" y="330">sends that id to Cerbos and logs it on a denial.</text>
+  <path class="d-cidline" d="M690,294 H838" marker-end="url(#correlation-pdp-arrow-cid)"/>
+  <text class="d-xs d-c d-halo" x="764" y="286">every operation</text>
+  </g>
+
+  <!-- the decision log -->
+  <g class="fragment" data-fragment-index="3">
+  <text class="d-s d-b" x="856" y="206">config.yaml</text>
+  <text class="d-xs d-m" x="856" y="232">decisionLogsEnabled: true</text>
+  <text class="d-xs d-m" x="856" y="254">file.path: stdout</text>
+  <text class="d-xs d-m" x="856" y="276">includeMetadataKeys:</text>
+  <text class="d-xs d-m d-cidt" x="856" y="298">  ["x-request-id"]</text>
+  <text class="d-xs" x="856" y="332">read with</text>
+  <text class="d-xs d-m" x="926" y="332">docker compose logs cerbos</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="4">
+  <rect class="d-navy" x="0" y="372" width="1184" height="56" rx="8"/>
+  <text class="d-s d-on-navy d-m" x="24" y="406">make cid CID=&lt;uuid&gt;</text>
+  <text class="d-s d-on-navy" x="236" y="406">greps the spark-connect, polaris and cerbos logs for it</text>
+  </g>
+</svg>

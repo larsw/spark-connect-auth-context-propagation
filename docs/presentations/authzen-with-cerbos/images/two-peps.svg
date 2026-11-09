@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 470" width="1184" height="470" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="two-peps-title two-peps-desc">
+  <title id="two-peps-title">Two enforcement points, one PDP</title>
+  <desc id="two-peps-desc">PySpark, JVM and Rust clients, and a forked Ontop VKG answering SPARQL as the caller, call one Spark Connect server carrying the propagation plugin. Its interceptor checks the caller's token and exchanges it at Keycloak with RFC 8693, and its AuthManager calls loadTable on a fork of Apache Polaris as the user, with a Bearer token and an X-Request-ID header. The Polaris console also calls Polaris, as the signed-in user. Polaris vends per-user S3 keys, which reach the Spark worker, which has no S3 key of its own and reads MinIO with vended keys only. Keycloak issues tokens and does the token exchange, and is no longer a PDP: it runs without --features=authzen. Then two arrows labelled AuthZEN go to Cerbos. The plugin's interceptor asks Cerbos about every authenticated RPC, with the RPC name as the action, for example AddArtifacts, and spark_connect as the resource type. Polaris, configured with authorization.type authzen, asks Cerbos about every catalog operation, with the Polaris operation as the action and the entity type as the resource type. Cerbos, on port 3592, reads its policies from docker/cerbos/policies, reloads them when a file changes, writes its decision log to stdout with the x-request-id, and denies anything no policy allows. A note adds: in Spark Connect a false decision closes the call with PERMISSION_DENIED and an error or timeout with UNAVAILABLE; bob's loadTable of restricted.salaries gets a 403 from Polaris; and a delegated loadTable asks for LOAD_TABLE_WITH_WRITE_DELEGATION first, then read.</desc>
+  <defs>
+    <marker id="two-peps-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="two-peps-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="two-peps-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="two-peps-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+
+  <text class="d-xs d-b" x="0" y="18">CALLERS</text>
+  <text class="d-xs d-b" x="250" y="18">COMPUTE</text>
+  <text class="d-xs d-b" x="700" y="18">IDENTITY, CATALOG, DECISIONS</text>
+
+  <!-- callers -->
+  <rect class="d-box2" x="0" y="30" width="210" height="46" rx="8"/>
+  <text class="d-t d-b" x="16" y="60">PySpark client</text>
+  <rect class="d-box2" x="0" y="88" width="210" height="46" rx="8"/>
+  <text class="d-t d-b" x="16" y="118">JVM client</text>
+  <rect class="d-box2" x="0" y="146" width="210" height="46" rx="8"/>
+  <text class="d-t d-b" x="16" y="176">Rust client</text>
+  <rect class="d-box" x="0" y="210" width="210" height="60" rx="8"/>
+  <text class="d-t d-b" x="16" y="236">Ontop VKG (fork)</text>
+  <text class="d-xs" x="16" y="258">SPARQL, as the caller</text>
+  <line class="d-line" x1="210" y1="53" x2="248" y2="53" marker-end="url(#two-peps-arrow)"/>
+  <line class="d-line" x1="210" y1="111" x2="248" y2="111" marker-end="url(#two-peps-arrow)"/>
+  <line class="d-line" x1="210" y1="169" x2="248" y2="169" marker-end="url(#two-peps-arrow)"/>
+  <line class="d-line" x1="210" y1="240" x2="248" y2="240" marker-end="url(#two-peps-arrow)"/>
+
+  <!-- Spark Connect server with the propagation plugin -->
+  <rect class="d-box" x="250" y="30" width="370" height="240" rx="8"/>
+  <text class="d-t d-b" x="266" y="60">Spark Connect server + plugin</text>
+  <rect class="d-box3" x="266" y="76" width="338" height="42" rx="6"/>
+  <text class="d-s" x="280" y="103">interceptor: checks and exchanges token</text>
+  <rect class="d-box3" x="266" y="128" width="338" height="42" rx="6"/>
+  <text class="d-s" x="280" y="155">AuthManager: Bearer + X-Request-ID</text>
+
+  <!-- Keycloak -->
+  <rect class="d-box2" x="700" y="30" width="484" height="84" rx="8"/>
+  <text class="d-t d-b" x="716" y="56">Keycloak</text>
+  <text class="d-xs" x="716" y="80">issues tokens, does the RFC 8693 exchange</text>
+  <line class="d-line" x1="620" y1="97" x2="698" y2="97" marker-end="url(#two-peps-arrow)"/>
+  <text class="d-xs d-c d-halo" x="660" y="89">RFC 8693</text>
+
+  <!-- Polaris fork and its console -->
+  <rect class="d-box2" x="700" y="136" width="284" height="132" rx="8"/>
+  <text class="d-t d-b" x="716" y="162">Apache Polaris (fork)</text>
+  <text class="d-xs" x="716" y="186">vends per-user S3 keys</text>
+  <line class="d-line" x1="620" y1="149" x2="698" y2="149" marker-end="url(#two-peps-arrow)"/>
+  <text class="d-xs d-c d-halo" x="660" y="141">loadTable</text>
+  <text class="d-xs d-c d-halo" x="660" y="167">as user</text>
+  <rect class="d-box" x="1024" y="136" width="160" height="132" rx="8"/>
+  <text class="d-t d-b" x="1040" y="164">Polaris</text>
+  <text class="d-t d-b" x="1040" y="188">console</text>
+  <text class="d-xs" x="1040" y="222">calls Polaris as</text>
+  <text class="d-xs" x="1040" y="242">the signed-in user</text>
+  <line class="d-line" x1="1024" y1="202" x2="986" y2="202" marker-end="url(#two-peps-arrow)"/>
+
+  <!-- data plane -->
+  <line class="d-line" x1="343" y1="270" x2="343" y2="308" marker-end="url(#two-peps-arrow)"/>
+  <rect class="d-token" x="356" y="277" width="152" height="24" rx="5"/>
+  <text class="d-xs d-embt" x="366" y="294">vended per-user key</text>
+  <rect class="d-box2" x="250" y="310" width="186" height="60" rx="8"/>
+  <text class="d-t d-b" x="266" y="336">Spark worker</text>
+  <text class="d-xs" x="266" y="358">no S3 key of its own</text>
+  <rect class="d-box2" x="470" y="310" width="150" height="60" rx="8"/>
+  <text class="d-t d-b" x="486" y="336">MinIO</text>
+  <text class="d-xs" x="486" y="358">vended keys only</text>
+  <line class="d-line" x1="436" y1="340" x2="468" y2="340" marker-end="url(#two-peps-arrow)"/>
+
+  <g class="fragment" data-fragment-index="1">
+  <!-- the plugin as a PEP -->
+  <rect class="d-box3" x="266" y="184" width="338" height="74" rx="6"/>
+  <text class="d-s d-b" x="280" y="206">interceptor: asks Cerbos per RPC</text>
+  <text class="d-xs" x="280" y="228">action = RPC name, e.g. AddArtifacts</text>
+  <text class="d-xs" x="280" y="248">resource.type = spark_connect</text>
+  <path class="d-line" d="M620,221 H660 V388 H698" marker-end="url(#two-peps-arrow)"/>
+  <text class="d-xs d-b d-c d-halo" x="660" y="330" transform="rotate(-90 660 330)">AuthZEN</text>
+
+  <!-- Polaris as a PEP -->
+  <text class="d-xs d-b" x="716" y="212">asks Cerbos per catalog operation</text>
+  <text class="d-xs" x="716" y="234">action = Polaris operation</text>
+  <text class="d-xs" x="716" y="254">resource.type = entity type</text>
+  <line class="d-line" x1="842" y1="268" x2="842" y2="314" marker-end="url(#two-peps-arrow)"/>
+  <text class="d-xs d-b d-halo" x="854" y="296">AuthZEN</text>
+
+  <text class="d-xs" x="716" y="102">no longer a PDP: runs without <tspan class="d-m">--features=authzen</tspan></text>
+
+  <!-- the PDP -->
+  <rect class="d-navy" x="700" y="316" width="484" height="146" rx="8"/>
+  <text class="d-t d-b d-on-navy" x="716" y="344">Cerbos</text>
+  <text class="d-xs d-on-navy" x="794" y="344">the PDP for both, on port 3592</text>
+  <text class="d-s d-on-navy" x="716" y="370">policies from docker/cerbos/policies</text>
+  <text class="d-s d-on-navy" x="716" y="394">reloaded on change (watchForChanges: true)</text>
+  <text class="d-s d-on-navy" x="716" y="418">decision log to stdout, with x-request-id</text>
+  <text class="d-s d-on-navy" x="716" y="442">anything no policy allows is denied</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="2">
+  <rect class="d-note" x="0" y="392" width="640" height="70" rx="6"/>
+  <text class="d-xs" x="14" y="412">Spark Connect: a false decision → PERMISSION_DENIED; an error or timeout → UNAVAILABLE</text>
+  <text class="d-xs" x="14" y="432">Polaris: bob’s loadTable of restricted.salaries gets a 403</text>
+  <text class="d-xs" x="14" y="452">a delegated loadTable asks for <tspan class="d-m">LOAD_TABLE_WITH_WRITE_DELEGATION</tspan> first, then read</text>
+  </g>
+</svg>

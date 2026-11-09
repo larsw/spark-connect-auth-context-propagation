@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 560" width="1184" height="560" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="authz-path-title authz-path-desc">
+  <title id="authz-path-title">Who decides on bob's read</title>
+  <desc id="authz-path-desc">A sequence diagram of bob reading shared.events, with lifelines for bob's client, Keycloak, Spark Connect, Cerbos, the Polaris fork and MinIO. Bob's client sends ExecutePlan with x-user-token and x-correlation-id. Spark Connect validates the JWT, then makes an RFC 8693 token exchange at Keycloak and gets back a token for the audience polaris that carries principal_name bob and principal_roles analyst. When the request message arrives, Spark Connect checks in its own code that the user_id in the request is the token's subject and that the subject owns the session. Only then does it ask Cerbos over AuthZEN whether subject bob with role analyst may call ExecutePlan on a resource of type spark_connect, and Cerbos answers true. The job tag carries the identity to the ExecutionThread, which calls Polaris's loadTable with a Bearer token and X-Request-ID. Polaris asks Cerbos about LOAD_TABLE_WITH_WRITE_DELEGATION first and gets false, then asks about LOAD_TABLE_WITH_READ_DELEGATION and gets true. Polaris returns the table metadata and a read-only temporary S3 key, and a Spark worker reads the data files from MinIO with that key.</desc>
+  <defs>
+    <marker id="authz-path-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="authz-path-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="authz-path-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="authz-path-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+
+  <!-- lifelines -->
+  <line class="d-life" x1="76" y1="48" x2="76" y2="556"/>
+  <rect class="d-box2" x="8" y="8" width="136" height="40" rx="6"/>
+  <text class="d-s d-b d-c" x="76" y="34">bob’s client</text>
+  <line class="d-life" x1="238" y1="48" x2="238" y2="556"/>
+  <rect class="d-box2" x="170" y="8" width="136" height="40" rx="6"/>
+  <text class="d-s d-b d-c" x="238" y="34">Keycloak</text>
+  <line class="d-life" x1="420" y1="48" x2="420" y2="556"/>
+  <rect class="d-box2" x="344" y="8" width="152" height="40" rx="6"/>
+  <text class="d-s d-b d-c" x="420" y="34">Spark Connect</text>
+  <line class="d-life" x1="620" y1="48" x2="620" y2="556"/>
+  <rect class="d-navy" x="552" y="8" width="136" height="40" rx="6"/>
+  <text class="d-s d-b d-c d-on-navy" x="620" y="34">Cerbos</text>
+  <text class="d-xs d-i d-c d-halo" x="620" y="68">AuthZEN PDP</text>
+  <line class="d-life" x1="960" y1="48" x2="960" y2="556"/>
+  <rect class="d-box2" x="884" y="8" width="152" height="40" rx="6"/>
+  <text class="d-s d-b d-c" x="960" y="34">Polaris (fork)</text>
+  <line class="d-life" x1="1110" y1="48" x2="1110" y2="556"/>
+  <rect class="d-box2" x="1050" y="8" width="120" height="40" rx="6"/>
+  <text class="d-s d-b d-c" x="1110" y="34">MinIO</text>
+
+  <g class="fragment" data-fragment-index="1">
+  <line class="d-line" x1="76" y1="84" x2="418" y2="84" marker-end="url(#authz-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="247" y="76">ExecutePlan + x-user-token + <tspan class="d-cidt">x-correlation-id</tspan></text>
+  <rect class="d-note" x="344" y="94" width="152" height="28" rx="4"/>
+  <text class="d-xs d-c" x="420" y="113">validate the JWT</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="2">
+  <line class="d-line" x1="420" y1="148" x2="240" y2="148" marker-end="url(#authz-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="330" y="140">RFC 8693 exchange</text>
+  <line class="d-line d-dash" x1="238" y1="176" x2="418" y2="176" marker-end="url(#authz-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="328" y="168">aud=polaris</text>
+  <rect class="d-token" x="150" y="186" width="250" height="46" rx="4"/>
+  <text class="d-xs d-m d-embt" x="166" y="204">principal_name: bob</text>
+  <text class="d-xs d-m d-embt" x="166" y="223">principal_roles: [analyst]</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="3">
+  <rect class="d-note" x="330" y="242" width="180" height="46" rx="4"/>
+  <text class="d-xs d-c" x="420" y="261">in code: user_id == sub</text>
+  <text class="d-xs d-c" x="420" y="280">sub owns the session</text>
+  <line class="d-line" x1="420" y1="316" x2="618" y2="316" marker-end="url(#authz-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="516" y="308">ExecutePlan, spark_connect</text>
+  <text class="d-xs d-c d-halo" x="516" y="334">subject bob [analyst]</text>
+  <rect class="d-ok" x="628" y="304" width="64" height="24" rx="12"/>
+  <text class="d-xs d-c d-b d-okt" x="660" y="321">true</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="4">
+  <rect class="d-note" x="265" y="350" width="310" height="28" rx="4"/>
+  <text class="d-xs d-c" x="420" y="369">job tag carries bob to the ExecutionThread</text>
+  <line class="d-line" x1="420" y1="404" x2="958" y2="404" marker-end="url(#authz-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="690" y="396">loadTable, Bearer + <tspan class="d-cidt">X-Request-ID</tspan></text>
+  </g>
+
+  <g class="fragment" data-fragment-index="5">
+  <line class="d-line" x1="960" y1="440" x2="622" y2="440" marker-end="url(#authz-path-arrow)"/>
+  <text class="d-xs d-m d-c d-halo" x="790" y="432">LOAD_TABLE_WITH_WRITE_DELEGATION</text>
+  <rect class="d-no" x="548" y="428" width="64" height="24" rx="12"/>
+  <text class="d-xs d-c d-b d-not" x="580" y="445">false</text>
+  <line class="d-line" x1="960" y1="476" x2="622" y2="476" marker-end="url(#authz-path-arrow)"/>
+  <text class="d-xs d-m d-c d-halo" x="790" y="468">LOAD_TABLE_WITH_READ_DELEGATION</text>
+  <rect class="d-ok" x="548" y="464" width="64" height="24" rx="12"/>
+  <text class="d-xs d-c d-b d-okt" x="580" y="481">true</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="6">
+  <line class="d-emline d-dash" x1="960" y1="514" x2="423" y2="514" marker-end="url(#authz-path-arrow-em)"/>
+  <text class="d-xs d-c d-halo d-embt" x="780" y="506">metadata + read-only temporary S3 key</text>
+  <line class="d-line" x1="420" y1="548" x2="1108" y2="548" marker-end="url(#authz-path-arrow)"/>
+  <text class="d-xs d-c d-halo" x="800" y="540">a Spark worker reads the data files with that key</text>
+  </g>
+</svg>

@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 430" width="1184" height="430" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="before-after-title before-after-desc">
+  <title id="before-after-title">Who decides, before and after</title>
+  <desc id="before-after-desc">Two halves divided by a dashed line. On the left, titled main, Polaris decides. The Spark Connect plugin checks the token and that the caller owns the session, and decides nothing else. It calls Polaris's loadTable with the exchanged token, and Polaris decides from its own grants: the principal role data_engineer is bound to the catalog role engineer, which holds CATALOG_MANAGE_CONTENT, and the principal role analyst is bound to the catalog role shared_reader, which may read the shared namespace only. Both kinds of role are created by docker/polaris/bootstrap.sh. On the right, titled this branch, Cerbos decides. The Spark Connect plugin still checks the token and the session owner, then asks Cerbos about every authenticated RPC, and the Polaris fork asks Cerbos about each catalog call, both over AuthZEN. Cerbos holds the policies in docker/cerbos/policies: a resource policy per kind (spark_connect, ROOT, CATALOG, NAMESPACE and TABLE_LIKE), plus derived roles and a principal policy for Polaris's root, and anything not allowed is denied. A note on the Polaris fork says bootstrap.sh still creates the catalog-role grants, but Polaris no longer reads them, only the principals' role assignments. Along the bottom, shared by both halves: Keycloak issues every user's token and does the RFC 8693 token exchange.</desc>
+  <defs>
+    <marker id="before-after-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="before-after-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="before-after-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="before-after-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+
+  <line class="d-life" x1="528" y1="8" x2="528" y2="346"/>
+
+  <!-- left: main -->
+  <text class="d-t d-b" x="0" y="26">main</text>
+  <text class="d-s d-i" x="64" y="26">who decides: Polaris</text>
+
+  <rect class="d-box2" x="0" y="44" width="496" height="84" rx="8"/>
+  <text class="d-t d-b" x="16" y="72">Spark Connect plugin</text>
+  <text class="d-s" x="16" y="100">checks the token and the session owner, decides nothing else</text>
+  <line class="d-line" x1="120" y1="128" x2="120" y2="170" marker-end="url(#before-after-arrow)"/>
+  <text class="d-xs d-halo" x="132" y="154">loadTable, exchanged token</text>
+
+  <rect class="d-box2" x="0" y="172" width="496" height="170" rx="8"/>
+  <text class="d-t d-b" x="16" y="202">Polaris</text>
+  <text class="d-s" x="16" y="228">decides from its own grants</text>
+  <rect class="d-box3" x="16" y="244" width="464" height="36" rx="6"/>
+  <text class="d-xs d-m" x="30" y="267">data_engineer → engineer</text>
+  <text class="d-xs d-m" x="466" y="267" text-anchor="end">CATALOG_MANAGE_CONTENT</text>
+  <rect class="d-box3" x="16" y="290" width="464" height="36" rx="6"/>
+  <text class="d-xs d-m" x="30" y="313">analyst → shared_reader</text>
+  <text class="d-xs" x="466" y="313" text-anchor="end">read on shared only</text>
+  <text class="d-xs d-i" x="0" y="364">principal role → catalog role, both created by docker/polaris/bootstrap.sh</text>
+
+  <!-- right: this branch -->
+  <g class="fragment" data-fragment-index="1">
+  <text class="d-t d-b" x="560" y="26">this branch</text>
+  <text class="d-s d-i" x="688" y="26">who decides: Cerbos</text>
+
+  <rect class="d-box2" x="560" y="44" width="328" height="84" rx="8"/>
+  <text class="d-t d-b" x="576" y="70">Spark Connect plugin</text>
+  <text class="d-s" x="576" y="96">checks the token and session owner,</text>
+  <text class="d-s" x="576" y="116">then asks about every authenticated RPC</text>
+  <line class="d-line" x1="664" y1="128" x2="664" y2="170" marker-end="url(#before-after-arrow)"/>
+  <text class="d-xs d-halo" x="676" y="154">loadTable</text>
+
+  <rect class="d-box2" x="560" y="172" width="328" height="170" rx="8"/>
+  <text class="d-t d-b" x="576" y="202">Polaris (fork)</text>
+  <text class="d-s" x="576" y="228">asks about each catalog call</text>
+
+  <rect class="d-navy" x="952" y="44" width="232" height="298" rx="8"/>
+  <text class="d-t d-b d-on-navy" x="968" y="74">Cerbos</text>
+  <text class="d-xs d-on-navy" x="968" y="100">the policies in</text>
+  <text class="d-xs d-m d-on-navy" x="968" y="120">docker/cerbos/policies</text>
+  <text class="d-xs d-on-navy" x="968" y="150">a resource policy per kind:</text>
+  <text class="d-xs d-m d-on-navy" x="968" y="172">spark_connect</text>
+  <text class="d-xs d-m d-on-navy" x="968" y="192">ROOT</text>
+  <text class="d-xs d-m d-on-navy" x="968" y="212">CATALOG</text>
+  <text class="d-xs d-m d-on-navy" x="968" y="232">NAMESPACE</text>
+  <text class="d-xs d-m d-on-navy" x="968" y="252">TABLE_LIKE</text>
+  <text class="d-xs d-on-navy" x="968" y="278">+ derived roles and</text>
+  <text class="d-xs d-on-navy" x="968" y="296">a principal policy for root</text>
+  <text class="d-xs d-on-navy" x="968" y="324">anything not allowed is denied</text>
+
+  <line class="d-line" x1="888" y1="80" x2="950" y2="80" marker-end="url(#before-after-arrow)"/>
+  <text class="d-xs d-c d-halo" x="919" y="72">AuthZEN</text>
+  <line class="d-line" x1="888" y1="210" x2="950" y2="210" marker-end="url(#before-after-arrow)"/>
+  <text class="d-xs d-c d-halo" x="919" y="202">AuthZEN</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="2">
+  <rect class="d-note" x="576" y="250" width="320" height="56" rx="4"/>
+  <text class="d-xs" x="590" y="273">Polaris no longer reads bootstrap.sh's grants,</text>
+  <text class="d-xs" x="590" y="292">only its principal-role assignments</text>
+  </g>
+
+  <!-- shared -->
+  <rect class="d-box" x="0" y="380" width="1184" height="42" rx="8"/>
+  <text class="d-s d-c" x="592" y="407"><tspan class="d-b">Keycloak</tspan>, in both: issues every user's token and does the RFC 8693 token exchange</text>
+</svg>

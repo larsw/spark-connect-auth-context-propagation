@@ -108,8 +108,10 @@
   white-space: nowrap;
 }
 
+/* The band's label is the deck's name. A deck sets its own with --poc-deck-name, in a docinfo file
+   beside it (see authzen-with-cerbos); the first deck uses the default. */
 .reveal :is(.slides, .pdf-page) > section > h2::after {
-  content: "identity \B7  spark connect";
+  content: var(--poc-deck-name, "identity \B7  spark connect");
   position: absolute;
   top: 0;
   right: var(--poc-gutter);
