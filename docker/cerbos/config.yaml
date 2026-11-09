@@ -1,0 +1,26 @@
+# Cerbos, the Policy Decision Point for Polaris and for the Spark Connect plugin.
+#
+# Both call its AuthZEN Access Evaluation endpoint on 3592 (/access/v1/evaluation); Polaris would use
+# /access/v1/evaluations for a request with several intents. Cerbos's own API is there too, and gRPC
+# on 3593. The policies are files in /policies, watched for changes.
+server:
+  httpListenAddr: ":3592"
+  grpcListenAddr: ":3593"
+
+storage:
+  driver: disk
+  disk:
+    directory: /policies
+    watchForChanges: true
+
+# Every decision is written to stdout as a JSON line, with the request's X-Request-ID. Polaris and
+# the plugin both send the caller's correlation ID there, so `make cid` finds Cerbos's decisions
+# beside the Spark Connect and Polaris log lines for the same request.
+audit:
+  enabled: true
+  accessLogsEnabled: false
+  decisionLogsEnabled: true
+  backend: file
+  includeMetadataKeys: ["x-request-id"]
+  file:
+    path: stdout

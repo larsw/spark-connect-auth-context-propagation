@@ -8,11 +8,15 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-> **This branch is not `main`.** It swaps Apache Polaris for a fork that delegates authorization
-> to an AuthZEN Policy Decision Point, and makes Keycloak that PDP.
-> [AUTHZEN-SUMMARY.md](AUTHZEN-SUMMARY.md) is the short version, including the one thing it costs;
+> **This branch is not `main`.** Authorization decisions are made by [Cerbos](https://www.cerbos.dev/),
+> asked over the OpenID AuthZEN Authorization API by two callers: a fork of Apache Polaris, for
+> every catalog operation, and the Spark Connect plugin, for every RPC except ReleaseSession and
+> ReleaseExecute. The policies are the YAML files in `docker/cerbos/policies`.
+> [AUTHZEN-SUMMARY.md](AUTHZEN-SUMMARY.md) is the short version, with this branch's test results;
 > [docs/authzen-pdp.md](docs/authzen-pdp.md) is how it is wired. Run `make polaris-image` before
-> `make up`.
+> `make up`. The status line and the sections below describe `main`: where they say Polaris
+> authorises by its grants, on this branch Cerbos policies decide, from the principal roles Polaris
+> still assigns.
 
 **Status:** complete and verified. 43 end-to-end checks against the live stack, plus 109 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and

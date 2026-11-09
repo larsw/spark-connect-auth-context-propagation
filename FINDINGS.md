@@ -644,3 +644,51 @@ holds. A request type it still does not recognise is refused rather than passed 
 RPC Spark adds fails closed. `ConnectCoordinatesTest` covers the parsing; no end-to-end test clones a
 session yet. Found by reviewing the AuthZEN branch, where the same gap also meant `CloneSession`
 never reached the PDP.
+
+## 20. Cerbos over AuthZEN does not use `subject.properties.roles` as the principal's roles
+
+Cerbos 0.56 serves the AuthZEN Access Evaluation and Evaluations APIs on its HTTP port, and its
+discovery document at `/.well-known/authzen-configuration`. Both Polaris's AuthZEN authorizer and
+the Spark Connect plugin send the caller's roles as `subject.properties.roles`, because AuthZEN
+defines no roles field and leaves `properties` free-form. Cerbos maps the subject's properties to
+`principal.attr` and does not take the roles from there. Without a property literally named
+`cerbos.roles`, it uses the subject's **type** as the principal's one role, as its decision log
+shows for every request here:
+
+```json
+"principal": {"id": "bob", "roles": ["user"], "attr": {"roles": ["analyst"], "realm": "POLARIS"}}
+```
+
+So `roles: ["user"]` would match every caller, and a resource policy written the usual Cerbos way
+never matches what these two callers send:
+
+```yaml
+- actions: ["LOAD_TABLE"]
+  effect: EFFECT_ALLOW
+  roles: ["analyst"]          # never true for a subject without cerbos.roles
+```
+
+Probed against `ghcr.io/cerbos/cerbos:0.56.0` with one rule per question and the same request:
+
+| Rule | Decision |
+|---|---|
+| `roles: ["*"]` | true |
+| `roles: ["analyst"]` | **false** |
+| `roles: ["*"]`, condition `"analyst" in request.principal.attr.roles` | true |
+| `roles: ["*"]`, condition on `request.resource.attr.parents` | true |
+
+Cerbos flags nothing for the false one. With decision logging on it is recorded as an ordinary
+`EFFECT_DENY`, and only `roles: ["user"]` in that entry hints at the cause. The answer is a plain
+`{"decision": false}`, the same as for a rule that correctly denies, so a policy set written this way
+denies everything and looks as if it works.
+
+A subject property named `cerbos.roles` does become the principal's roles. Polaris cannot send it:
+the fork's subject properties are fixed to `roles` and `realm`. The plugin could, but then the two
+callers would need different policies. So the policies here use derived roles that read
+`P.attr.roles` (`docker/cerbos/policies/derived_roles.yaml`), which works for both and keeps the
+rules readable. svipul's Cerbos policies use `roles: ["*"]` with a condition instead.
+
+Resource properties map to `resource.attr` as expected, including nested lists such as Polaris's
+`parents`, so a rule can name a namespace without anything being registered in advance. That is the
+main practical difference from Keycloak's AuthZEN PDP, which resolves `resource.id` against
+resources registered beforehand, and so could only decide per entity type or per registered name.

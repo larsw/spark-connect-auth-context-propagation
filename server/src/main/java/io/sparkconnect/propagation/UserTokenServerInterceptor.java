@@ -1,7 +1,11 @@
 package io.sparkconnect.propagation;
 
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
+import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.spark.connect.proto.AddArtifactsRequest;
@@ -67,6 +71,9 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
   private final Metadata.Key<String> tokenKey;
   private final Metadata.Key<String> correlationKey;
 
+  /** The PDP each checked RPC is put to, or null when none is configured. */
+  private final AuthZenClient pdp;
+
   /** Required by Spark's interceptor registry. Do not add parameters. */
   public UserTokenServerInterceptor() {
     this.config = PluginConfig.fromSparkEnv();
@@ -75,13 +82,19 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
     this.tokenKey = Metadata.Key.of(config.tokenHeader, Metadata.ASCII_STRING_MARSHALLER);
     this.correlationKey =
         Metadata.Key.of(config.correlationHeader, Metadata.ASCII_STRING_MARSHALLER);
+    this.pdp =
+        config.authzenUrl == null
+            ? null
+            : AuthZenClient.forBaseUrl(
+                config.authzenUrl, Duration.ofMillis(config.authzenTimeoutMillis));
     LOG.info(
         "propagation interceptor active: token header '{}', correlation header '{}', "
-            + "issuer {}, exchange audience {}",
+            + "issuer {}, exchange audience {}, AuthZEN PDP {}",
         config.tokenHeader,
         config.correlationHeader,
         config.issuer,
-        config.exchangeAudience);
+        config.exchangeAudience,
+        pdp == null ? "<none>" : pdp.evaluationEndpoint());
   }
 
   @Override
@@ -135,7 +148,50 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
             downstream.expiresAtMillis());
 
     return new IdentityBindingListener<>(
-        next.startCall(call, headers), call, identity, correlationId, method);
+        next.startCall(call, headers),
+        call,
+        identity,
+        correlationId,
+        method,
+        pdp == null ? null : pdpSubject(subject, principalName, downstream.token()));
+  }
+
+  /**
+   * Who the PDP is told is asking: the principal and roles of the token the server just exchanged.
+   *
+   * <p>The token the client sent is addressed to Spark Connect and carries the roles only as
+   * Keycloak's {@code realm_access.roles}. The exchanged one is addressed to Polaris and carries
+   * {@code principal_name} and {@code principal_roles}, the claims Polaris maps to the roles it sends
+   * its PDP. Reading those means one set of policies names the same principal and roles for both
+   * callers. The token came
+   * straight from the identity provider over the server's own connection, so it is read here without
+   * a second signature check.
+   */
+  static AuthZenClient.Subject pdpSubject(
+      String subject, String fallbackPrincipal, String exchangedToken) {
+    String principal = fallbackPrincipal;
+    List<String> roles = List.of();
+    try {
+      JWTClaimsSet exchanged = JWTParser.parse(exchangedToken).getJWTClaimsSet();
+      String name = claimAsString(exchanged, "principal_name");
+      if (name != null) {
+        principal = name;
+      }
+      Object claimed = exchanged.getClaim("principal_roles");
+      if (claimed instanceof List<?> list) {
+        roles = list.stream().map(String::valueOf).toList();
+      }
+    } catch (java.text.ParseException e) {
+      LOG.debug("could not read claims from the exchanged token; asking the PDP without roles", e);
+    }
+    return new AuthZenClient.Subject(
+        "user", principal != null ? principal : subject, roles, Map.of("sub", subject));
+  }
+
+  /** {@code spark.connect.SparkConnectService/ExecutePlan} becomes {@code ExecutePlan}. */
+  static String actionOf(String fullMethodName) {
+    int slash = fullMethodName.lastIndexOf('/');
+    return slash < 0 ? fullMethodName : fullMethodName.substring(slash + 1);
   }
 
   /**
@@ -150,6 +206,7 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
     private final PropagatedIdentity identity;
     private final String correlationId;
     private final String method;
+    private final AuthZenClient.Subject pdpSubject;
     private boolean closed;
 
     IdentityBindingListener(
@@ -157,12 +214,14 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
         ServerCall<ReqT, ?> call,
         PropagatedIdentity identity,
         String correlationId,
-        String method) {
+        String method,
+        AuthZenClient.Subject pdpSubject) {
       super(delegate);
       this.call = call;
       this.identity = identity;
       this.correlationId = correlationId;
       this.method = method;
+      this.pdpSubject = pdpSubject;
     }
 
     /**
@@ -276,6 +335,48 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
               new Metadata());
           return;
         }
+      }
+
+      // Third, when a PDP is configured: may this principal make this call at all? The two checks
+      // above stay in code, because they are about whether the request is who it says it is, and
+      // a policy should not be able to turn them off. This one is about what an authenticated user
+      // may do, which is policy.
+      if (pdp != null && pdpSubject != null) {
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("user_id", coordinates.userId() == null ? "" : coordinates.userId());
+        if (coordinates.operationId() != null && !coordinates.operationId().isBlank()) {
+          properties.put("operation_id", coordinates.operationId());
+        }
+        // tag::pdp-check[]
+        String action = actionOf(method);
+        AuthZenClient.Decision decision =
+            pdp.evaluate(
+                pdpSubject,
+                action,
+                new AuthZenClient.Resource(
+                    config.authzenResourceType,
+                    coordinates.sessionId() == null ? "" : coordinates.sessionId(),
+                    properties),
+                correlationId);
+        if (!decision.allowed()) {
+          closed = true;
+          // tag::pdp-log[]
+          LOG.warn(
+              "rejected {}: the AuthZEN PDP did not allow {} for {} ({}) [cid={}]",
+              method, action, pdpSubject.id(), decision.reason(), correlationId);
+          // end::pdp-log[]
+          Status status =
+              decision.answered()
+                  ? Status.PERMISSION_DENIED.withDescription(
+                      "The authorization policy does not allow " + pdpSubject.id() + " to call "
+                          + action + " (correlation-id=" + correlationId + ")")
+                  : Status.UNAVAILABLE.withDescription(
+                      "Could not get an authorization decision: " + decision.reason()
+                          + " (correlation-id=" + correlationId + ")");
+          call.close(status, new Metadata());
+          return;
+        }
+        // end::pdp-check[]
       }
 
       PropagatedIdentityHolder.put(

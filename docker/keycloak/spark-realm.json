@@ -60,6 +60,22 @@
       ]
     },
     {
+      "username": "carol",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Carol",
+      "lastName": "Newcomer",
+      "email": "carol@example.invalid",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "carol",
+          "temporary": false
+        }
+      ],
+      "realmRoles": []
+    },
+    {
       "username": "service-account-spark-job",
       "enabled": true,
       "serviceAccountClientId": "spark-job",

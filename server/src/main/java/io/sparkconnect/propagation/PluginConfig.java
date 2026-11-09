@@ -29,6 +29,19 @@ public final class PluginConfig {
   public final String correlationHeader;
   public final long clockSkewSeconds;
 
+  /**
+   * Base URL of an AuthZEN PDP, such as {@code http://cerbos:3592}, or null. When it is set, the
+   * interceptor asks the PDP about every authenticated RPC before Spark sees it; when it is not, the
+   * plugin authorises nothing itself and leaves every decision to Polaris, as before.
+   */
+  public final String authzenUrl;
+
+  /** How long to wait for the PDP. A PDP that does not answer in time is a deny. */
+  public final long authzenTimeoutMillis;
+
+  /** The AuthZEN {@code resource.type} the interceptor asks about. */
+  public final String authzenResourceType;
+
   private PluginConfig(SparkConf conf) {
     this.issuer = require(conf, "oidc.issuer");
     this.jwksUri = require(conf, "oidc.jwks-uri");
@@ -39,6 +52,10 @@ public final class PluginConfig {
     this.tokenHeader = conf.get(PREFIX + "header.token", "x-user-token");
     this.correlationHeader = conf.get(PREFIX + "header.correlation-id", "x-correlation-id");
     this.clockSkewSeconds = Long.parseLong(conf.get(PREFIX + "exchange.skew-seconds", "30"));
+    String authzen = conf.get(PREFIX + "authzen.url", "");
+    this.authzenUrl = authzen.isBlank() ? null : authzen.trim();
+    this.authzenTimeoutMillis = Long.parseLong(conf.get(PREFIX + "authzen.timeout-ms", "2000"));
+    this.authzenResourceType = conf.get(PREFIX + "authzen.resource-type", "spark_connect");
 
     String secret = System.getenv("SPARK_CONNECT_PROPAGATION_CLIENT_SECRET");
     if (secret == null || secret.isBlank()) {

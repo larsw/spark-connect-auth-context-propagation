@@ -1,0 +1,31 @@
+# The roles every policy here is written in terms of.
+#
+# Over AuthZEN, Cerbos puts the subject's properties in the principal's attributes. It takes the
+# principal's roles only from a property named `cerbos.roles`, and otherwise uses the subject's type
+# ("user"). Polaris cannot send `cerbos.roles`, so a rule saying `roles: ["analyst"]` never matches
+# what either caller sends (FINDINGS §20). These derived roles read the roles back out of the
+# attributes, so the rules can still say who they are for.
+#
+# Polaris sends the principal's activated principal roles (data_engineer, analyst, service_admin).
+# The Spark Connect plugin sends the `principal_roles` claim of the token it exchanged, which holds
+# the same names, so one set of roles covers both callers.
+apiVersion: api.cerbos.dev/v1
+# tag::policy[]
+derivedRoles:
+  name: poc_roles
+  variables:
+    local:
+      roles: 'has(P.attr.roles) ? P.attr.roles : []'
+  definitions:
+    - name: data_engineer
+      parentRoles: ["*"]
+      condition:
+        match:
+          expr: '"data_engineer" in V.roles'
+
+    - name: analyst
+      parentRoles: ["*"]
+      condition:
+        match:
+          expr: '"analyst" in V.roles'
+# end::policy[]

@@ -1,0 +1,40 @@
+# Spark Connect itself, as the propagation plugin asks about it.
+#
+# The plugin's interceptor sends one evaluation per request message, after it has checked the token
+# and that the caller owns the session it names. That is one per RPC, except a streamed AddArtifacts
+# upload, which is asked about once per message. ReleaseSession and ReleaseExecute are exempt, so a
+# client can always free server state. The action is the RPC's name, such as ExecutePlan or
+# AddArtifacts, and the resource is the session:
+#
+#   {"type": "spark_connect", "id": "<session id>",
+#    "properties": {"user_id": "<sub>", "operation_id": "<only when the request carries one>"}}
+#
+# Data engineers may use every RPC. Analysts, and the job's service account, which holds the analyst
+# role, may run queries but may not upload artifacts: AddArtifacts adds jars, Python files and
+# archives to the session on the server, as code that runs in the same JVM and on the same executors
+# as everyone else's sessions. (PySpark also uses it to upload a large local DataFrame, so an
+# analyst's createDataFrame over the local relation cache threshold is refused too.) Anyone with
+# neither role is refused before Spark does any work.
+apiVersion: api.cerbos.dev/v1
+# tag::policy[]
+resourcePolicy:
+  version: default
+  resource: spark_connect
+  importDerivedRoles: [poc_roles]
+  rules:
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles: [data_engineer]
+
+    - actions:
+        - ExecutePlan
+        - AnalyzePlan
+        - Config
+        - ReattachExecute
+        - Interrupt
+        - ArtifactStatus
+        - FetchErrorDetails
+        - CloneSession
+      effect: EFFECT_ALLOW
+      derivedRoles: [analyst]
+# end::policy[]

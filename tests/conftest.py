@@ -7,6 +7,7 @@ environment so the same tests serve both.
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import shutil
 import subprocess
@@ -169,6 +170,24 @@ def compose_logs(service: str) -> str:
         return response.read().decode("utf-8", errors="replace")
     except Exception:
         return ""
+
+
+def decisions_mentioning(needle: str) -> list[dict]:
+    """Cerbos's decision-log entries whose line contains `needle`, such as a correlation ID.
+
+    Cerbos writes one JSON object per decision to stdout (docker/cerbos/config.yaml), with the
+    caller's X-Request-ID under metadata, so a correlation ID finds the decisions one request caused.
+    """
+    decisions = []
+    for line in compose_logs("cerbos").splitlines():
+        if needle not in line or '"log.kind":"decision"' not in line.replace(" ", ""):
+            continue
+        start = line.find("{")
+        try:
+            decisions.append(json.loads(line[start:]))
+        except ValueError:
+            continue
+    return decisions
 
 
 def docker_logs_available() -> bool:

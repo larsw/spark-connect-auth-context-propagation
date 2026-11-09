@@ -22,6 +22,8 @@ from conftest import (
     audit_events_since,
     audit_offset,
     compose_logs,
+    decisions_mentioning,
+    docker_logs_available,
     requires_docker,
     token_provider,
 )
@@ -71,16 +73,31 @@ def test_a_service_account_is_authorised_by_its_own_grants(spark_job):
     """Client credentials: no user behind the token, and still not the server's identity.
 
     The token belongs to spark-job's service account, which holds the analyst role and so gets
-    bob's grants -- the shared table, and a refusal on the restricted one that Polaris issues to
-    that account by name.
+    bob's answers -- the shared table, and a refusal on the restricted one.
+
+    On this branch the refusal is the PDP's, and the fork's message does not name the principal
+    ("AuthZEN PDP denied authorization"). That it was this account being refused, and not the
+    server, is read from Cerbos's decision log instead, found by the correlation ID.
     """
     assert spark_job.sql("SELECT count(*) c FROM polaris.shared.events").collect()[0].c == 3
 
-    with pytest.raises(Exception) as caught:
-        spark_job.sql("SELECT * FROM polaris.restricted.salaries").collect()
+    marker = str(uuid.uuid4())
+    with correlation_id(marker):
+        with pytest.raises(Exception) as caught:
+            spark_job.sql("SELECT * FROM polaris.restricted.salaries").collect()
 
     message = str(caught.value)
-    assert "service-account-spark-job" in message, message
+    assert "orbidden" in message or "denied" in message, message
+
+    if not docker_logs_available():
+        return
+    denied_principals = {
+        entry["principal"]["id"]
+        for decision in decisions_mentioning(marker)
+        for entry, output in zip(decision["checkResources"]["inputs"], decision["checkResources"]["outputs"])
+        if any(action["effect"] == "EFFECT_DENY" for action in output["actions"].values())
+    }
+    assert denied_principals == {"service-account-spark-job"}, denied_principals
 
 
 def test_concurrent_users_do_not_leak_into_each_other(alice, bob):

@@ -1,0 +1,13 @@
+# Polaris's realm-level operations, which arrive on a synthetic resource of type ROOT.
+#
+# Both roles may list the catalogs. Everything else at this level (creating catalogs, principals,
+# principal roles) is left to root, by polaris_root_principal.yaml.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: default
+  resource: ROOT
+  importDerivedRoles: [poc_roles]
+  rules:
+    - actions: ["LIST_CATALOGS"]
+      effect: EFFECT_ALLOW
+      derivedRoles: [data_engineer, analyst]

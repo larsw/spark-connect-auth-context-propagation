@@ -42,7 +42,7 @@ client-jar: ## Build the JVM client library and install it into the local Maven 
 client-rust: ## Build the Rust client crate
 	@cargo build --manifest-path client-rust/Cargo.toml
 
-polaris-image: ## Build the AuthZEN Polaris image from the fork (needed before `make up`)
+polaris-image: ## Build the AuthZEN Polaris fork's image, in a JDK 21 container (needed before `make up`)
 	@./docker/polaris-authzen/build.sh
 
 build: jar ## Build the plugin jar and the Spark image
@@ -124,9 +124,9 @@ test-container: ## Full suite inside the compose network (no host setup needed)
 logs: ## Follow logs from every service
 	@$(COMPOSE) logs -f
 
-cid: ## Trace one correlation ID across all three services: make cid CID=<uuid>
+cid: ## Trace one correlation ID across Spark Connect, Polaris and Cerbos: make cid CID=<uuid>
 	@test -n "$(CID)" || { echo "usage: make cid CID=<uuid>" >&2; exit 2; }
-	@for svc in spark-connect polaris; do \
+	@for svc in spark-connect polaris cerbos; do \
 	  echo "----- $$svc -----"; \
 	  $(COMPOSE) logs --no-log-prefix $$svc 2>/dev/null | grep -aF "$(CID)" || echo "  (no match)"; \
 	done

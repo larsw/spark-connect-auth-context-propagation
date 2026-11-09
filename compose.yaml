@@ -30,10 +30,7 @@ services:
       KC_HTTP_ENABLED: "true"
     volumes:
       - ./docker/keycloak/spark-realm.json:/opt/keycloak/data/import/spark-realm.json:ro
-    # --features=authzen turns on Keycloak's experimental Authorization API (AuthZEN) endpoints,
-    # which is what makes this Keycloak a Policy Decision Point that Polaris can call. Confirm with
-    #   curl -s http://keycloak:8080/realms/spark/.well-known/authzen-configuration
-    command: ["start-dev", "--import-realm", "--health-enabled=true", "--features=authzen"]
+    command: ["start-dev", "--import-realm", "--health-enabled=true"]
     healthcheck:
       test: "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"
       interval: 5s
@@ -109,6 +106,8 @@ services:
         condition: service_healthy
       minio-setup:
         condition: service_completed_successfully
+      cerbos:
+        condition: service_healthy
     environment:
       # Root principal for bootstrap (internal auth); alice/bob arrive via Keycloak.
       POLARIS_BOOTSTRAP_CREDENTIALS: "POLARIS,root,s3cr3t"
@@ -155,28 +154,24 @@ services:
       polaris.readiness.ignore-severe-issues: "true"
       quarkus.otel.sdk.disabled: "true"
 
-      # ---- AuthZEN: authorization decisions come from Keycloak, not from Polaris grants ----
+      # ---- AuthZEN: authorization decisions come from Cerbos, not from Polaris grants ----
       # Polaris stops deciding and asks a Policy Decision Point over the OpenID AuthZEN
-      # Authorization API. The grants the bootstrap still creates are no longer what answers
-      # "may bob read this?" -- the polaris-pdp client's permissions in the realm are.
+      # Authorization API. The grants the bootstrap still creates no longer answer "may bob read
+      # this?"; the policies in docker/cerbos/policies do.
+      # tag::polaris-authzen[]
       polaris.authorization.type: "authzen"
 
-      # Endpoints are discovered from <pdp-uri>/.well-known/authzen-configuration.
-      polaris.authorization.authzen.pdp-uri: "http://keycloak:8080/realms/spark"
+      # Endpoints are discovered from <pdp-uri>/.well-known/authzen-configuration, which Cerbos
+      # serves. Cerbos stays on the compose network and needs no credentials of its callers.
+      polaris.authorization.authzen.pdp-uri: "http://cerbos:3592"
+      polaris.authorization.authzen.auth.type: "none"
+      # end::polaris-authzen[]
 
-      # Keycloak requires the caller to be a client with authorization services enabled, and
-      # issues short-lived tokens, so Polaris fetches and refreshes its own.
-      polaris.authorization.authzen.auth.type: "client-credentials"
-      polaris.authorization.authzen.auth.client-credentials.token-endpoint: "http://keycloak:8080/realms/spark/protocol/openid-connect/token"
-      polaris.authorization.authzen.auth.client-credentials.client-id: "polaris-pdp"
-      polaris.authorization.authzen.auth.client-credentials.client-secret: "polaris-pdp-secret"
-
-      # Payload shaping for Keycloak. `name` rather than the default `path` so resource.id is the
-      # leaf -- `events`, `salaries` -- which is what the realm registers as resources, and what
-      # lets one policy distinguish the shared table from the restricted one.
-      polaris.authorization.authzen.mapping.subject-id-prefix: "username:"
-      polaris.authorization.authzen.mapping.resource-type-prefix: "polaris:"
-      polaris.authorization.authzen.mapping.resource-id-format: "name"
+      # The defaults suit Cerbos: resource.type is the bare entity type (TABLE_LIKE, NAMESPACE,
+      # ...), which Cerbos uses as the resource kind, and the policies decide on the structured
+      # `parents` in resource.properties rather than on the joined id. Logged at DEBUG, each
+      # request shows exactly what was asked.
+      quarkus.log.category."org.apache.polaris.extension.auth.authzen".level: "DEBUG"
 
       # Polaris is the ONLY component holding MinIO's root credentials -- it needs them
       # to call STS AssumeRole when vending scoped credentials. Spark has none.
@@ -189,6 +184,28 @@ services:
       timeout: 5s
       retries: 30
       start_period: 15s
+
+  # ------------------------------------------------------------------ Cerbos --
+  # The Policy Decision Point. Polaris asks it about every catalog operation, and the Spark Connect
+  # plugin about every RPC, both over the OpenID AuthZEN Authorization API. It reads its policies
+  # from docker/cerbos/policies and reloads them when they change, so a policy can be edited with
+  # the stack running. Published on 3592 so a policy can be tried with curl from the host (see
+  # docs/authzen-pdp.md); its decision log goes to `docker compose logs cerbos`.
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:0.56.0
+    command: ["server", "--config=/config/config.yaml"]
+    ports:
+      - "3592:3592"
+    environment:
+      CERBOS_NO_TELEMETRY: "1"
+    volumes:
+      - ./docker/cerbos/config.yaml:/config/config.yaml:ro
+      - ./docker/cerbos/policies:/policies:ro
+    healthcheck:
+      test: ["CMD", "/cerbos", "healthcheck", "--config=/config/config.yaml"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
 
   polaris-setup:
     image: alpine/curl:8.21.0
@@ -414,6 +431,7 @@ services:
       # Same reasoning: 8090 is only the host-published port.
       ONTOP_URL: "http://ontop:8080"
       SPARQL_CONSOLE_URL: "http://sparql-console"
+      CERBOS_URL: "http://cerbos:3592"
       CONNECT_SHARED_SECRET: "${CONNECT_SHARED_SECRET:-poc-shared-secret}"
     volumes:
       - ./client:/work/client:ro
@@ -466,6 +484,8 @@ services:
         condition: service_healthy
       polaris-setup:
         condition: service_completed_successfully
+      cerbos:
+        condition: service_healthy
     ports:
       - "15002:15002"
       - "4040:4040"

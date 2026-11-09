@@ -1,0 +1,34 @@
+# A Polaris namespace.
+#
+# Polaris sends the namespace's own name in `name` and the catalog above it in `parents`, so the
+# rule for analysts can name the one namespace they may read. A data engineer may do anything,
+# including create tables in it.
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: default
+  resource: NAMESPACE
+  importDerivedRoles: [poc_roles]
+  variables:
+    local:
+      # The namespace is `shared`, or is nested inside it.
+      in_shared: >-
+        R.attr.name == "shared" ||
+        (has(R.attr.parents) && R.attr.parents.exists(p, p.type == "NAMESPACE" && p.name == "shared"))
+  rules:
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles: [data_engineer]
+
+    - actions:
+        - LOAD_NAMESPACE_METADATA
+        - NAMESPACE_EXISTS
+        - LIST_NAMESPACES
+        - LIST_TABLES
+        - LIST_VIEWS
+        - LIST_POLICY
+        - GET_APPLICABLE_POLICIES_ON_NAMESPACE
+      effect: EFFECT_ALLOW
+      derivedRoles: [analyst]
+      condition:
+        match:
+          expr: V.in_shared

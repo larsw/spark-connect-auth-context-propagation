@@ -1,168 +1,199 @@
-# Trying the AuthZEN PDP fork of Polaris
+# Authorization through AuthZEN, decided by Cerbos
 
-This branch swaps Apache Polaris for **[larsw/polaris @ `feat/authzen-pdp-support`][fork]**, one
-commit on top of Polaris `main` that lets Polaris delegate every authorization decision to a
-Policy Decision Point speaking the [OpenID AuthZEN Authorization API 1.0][authzen]. Keycloak — the
-same instance that already issues the tokens — becomes that PDP, via its experimental `authzen`
-feature.
+On this branch, two parts of the stack stop deciding for themselves who may do what, and ask a
+Policy Decision Point (PDP) instead, over the [OpenID AuthZEN Authorization API 1.0][authzen]:
 
-It is a branch, not a merge: the point is to find out what changes. The short answer is that the
-authorization decision moves, and two settings have to move with it or the vended credentials stop
-being per-user.
+- **Polaris**, through the fork [larsw/polaris @ `feat/authzen-pdp-support`][fork], asks about every
+  catalog operation: may bob load this table, may alice create one in that namespace.
+- **The Spark Connect plugin** asks about every RPC except ReleaseSession and ReleaseExecute, before
+  Spark does any work: may bob run a query, may he upload an artifact.
 
-[fork]: https://github.com/larsw/polaris/tree/feat/authzen-pdp-support
+The PDP is [Cerbos][cerbos]. Its policies are YAML files in [`docker/cerbos/policies`](../docker/cerbos/policies),
+and they are the only place either decision is made.
+
+Keycloak still issues every token and still does the token exchange. It is no longer a PDP, so it
+runs without `--features=authzen` and the realm has no authorization-services client.
+
 [authzen]: https://openid.net/specs/authorization-api-1_0.html
+[fork]: https://github.com/larsw/polaris/tree/feat/authzen-pdp-support
+[cerbos]: https://www.cerbos.dev/
 
 ## Running it
 
 ```bash
-make polaris-image     # clones the fork at a pinned commit and builds it (gradle + quarkus, ~2 min)
+make polaris-image     # clones the fork at a pinned commit and builds it in a JDK 21 container
 make build && make up
-make bootstrap
 make demo
+make test-container    # the suite inside the compose network
 ```
 
-`make polaris-image` needs `java21` and `docker`, which `install.sh` already checks for. There is
-no published image for the fork, so it is built from source — the same approach
-`docker/polaris-console/` takes for the Polaris console.
+`make polaris-image` needs only git and docker. Polaris's own `make build-server` refuses any `java`
+that is not exactly 21, and Gradle needs a full JDK, not the Java 21 runtime some distributions
+install. So the script runs Gradle directly in `eclipse-temurin:21-jdk`. The Gradle cache is a
+docker volume, so the second build is much faster than the first.
 
-## What changed
+The fork is a 1.8.0 snapshot of Polaris main, where `main` of this repo runs the 1.7.0 release. If
+something in Polaris behaves differently, check whether 1.7.0 does the same before blaming a policy.
 
-**Keycloak** (`compose.yaml`, `docker/keycloak/spark-realm.json`)
+## Who asks what
 
-- started with `--features=authzen`, which exposes
-  `/realms/spark/.well-known/authzen-configuration` and the evaluation endpoints under it
-- a new confidential client, `polaris-pdp`, with Authorization Services enabled. **Its resources,
-  scopes and permissions are now the policy** — what alice and bob may do is decided here, not by
-  Polaris grants
-- a `root` user, with no credentials, which exists only so a policy can name it. The bootstrap
-  runs as Polaris's internal root principal, and with an external PDP even that goes to Keycloak:
-  without this, `make bootstrap` fails on its first call with `AuthZEN PDP denied authorization`
+```
+                      AuthZEN                                AuthZEN
+  Spark Connect  ───────────────►  Cerbos  ◄───────────────  Polaris (fork)
+  plugin                          policies                   every catalog operation
+  every checked RPC               docker/cerbos/policies
+```
 
-**Polaris** (`compose.yaml`)
+### Polaris
 
 ```yaml
 polaris.authorization.type: "authzen"
-polaris.authorization.authzen.pdp-uri: "http://keycloak:8080/realms/spark"
-polaris.authorization.authzen.auth.type: "client-credentials"
-polaris.authorization.authzen.mapping.resource-id-format: "name"
+polaris.authorization.authzen.pdp-uri: "http://cerbos:3592"
+polaris.authorization.authzen.auth.type: "none"
 ```
 
-`resource-id-format: name` rather than the default `path`, so `resource.id` is the leaf — `events`,
-`salaries` — which is what the realm registers and what lets one policy tell the shared table from
-the restricted one.
+The fork's defaults suit Cerbos. `resource.type` is the bare Polaris entity type (`TABLE_LIKE`,
+`NAMESPACE`, `CATALOG`, `ROOT`), which Cerbos uses as the resource kind, so each type the users touch
+has its own policy file. Other types, such as `PRINCIPAL_ROLE` and `CATALOG_ROLE`, have none and are
+allowed only to root. Each request also carries the entity's `name` and its `parents` in
+`resource.properties`, so a policy can name a namespace without anything being registered in
+advance:
 
-## The policy, in Keycloak terms
-
-Keycloak matches `action.name` against **scopes** and `resource.id` against **resources**, and both
-must be registered in advance — an unregistered resource id is indistinguishable from a deny, so
-`docker/keycloak/polaris-operations.txt` carries all 119 Polaris operations and every entity the
-bootstrap touches is registered.
-
-| Policy | Subject | Resources | Scopes |
-|---|---|---|---|
-| `alice-may-do-anything` | alice | all | all 119 |
-| `bob-may-read-shared` | bob | `POLARIS`, `poc_catalog`, `shared`, `events` | the 30 read-only ones (no `*WRITE*`) |
-| `root-may-bootstrap` | root | all | all 119 |
-
-The resource server is set to `AFFIRMATIVE`. Keycloak defaults it to `UNANIMOUS`, which requires
-*every* permission covering a (resource, scope) pair to grant — so as soon as there is more than
-one role, they contradict each other and everyone is denied.
-
-## It works, and you can see it
-
-`make demo` is unchanged, and so is its outcome — except for where the refusal comes from:
-
-```
-  OK      alice: SELECT * FROM polaris.restricted.salaries
-  DENIED  bob  : SELECT * FROM polaris.restricted.salaries
-            (org.apache.iceberg.exceptions.ForbiddenException) Forbidden: AuthZEN PDP denied
-            authorization
-```
-
-That sentence used to come from Polaris's own grant evaluation. It now comes from a policy
-decision made in Keycloak.
-
-## Per-user credentials: two settings, both easy to get wrong
-
-Getting to "alice and bob hold different, differently-scoped credentials" took two fixes. Neither
-is a defect in the fork — both are configuration — but both fail *silently*, and the first draft of
-this branch shipped with both wrong and concluded the fork was at fault. It was not.
-
-**1. Polaris caches vended credentials, and the cache key includes the STS session name.**
-
-`AwsStorageCredentialCacheKey` is keyed on the realm, the storage config, the allowed read/list/
-write locations, the session name and the session tags. The session name is `polaris` for
-*everyone* unless you say otherwise, so two principals whose location grants match collapse onto
-one cache entry and are handed a byte-identical access key and session token.
-
-```yaml
-polaris.features."INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL": "true"
-```
-
-makes it `polaris-alice` / `polaris-bob`. Polaris's own documentation frames this as a cost —
-"degradation in temporary credential caching as catalog will no longer be able to reuse
-credentials for multiple principals" — which is precisely the property wanted here.
-
-**2. A delegated load asks for WRITE first, so a too-generous read policy grants writes.**
-
-`IcebergCatalogHandler` decides the credential's scope like this:
-
-```java
-Set<PolarisStorageActions> actionsRequested = new HashSet<>(Set.of(READ, LIST));
-try {
-  authorize(... LOAD_TABLE_WITH_WRITE_DELEGATION ...);
-  actionsRequested.add(WRITE);
-} catch (ForbiddenException e) {
-  authorize(... LOAD_TABLE_WITH_READ_DELEGATION ...);
+```json
+{
+  "subject":  {"type": "user", "id": "bob", "properties": {"roles": ["analyst"], "realm": "POLARIS"}},
+  "action":   {"name": "LOAD_TABLE_WITH_READ_DELEGATION"},
+  "resource": {"type": "TABLE_LIKE", "id": "poc_catalog/shared/events",
+               "properties": {"name": "events",
+                              "parents": [{"type": "CATALOG", "name": "poc_catalog"},
+                                          {"type": "NAMESPACE", "name": "shared"}]}},
+  "context":  {"request_id": "5ca6e59a-..."}
 }
 ```
 
-Write delegation is requested *first*, and read is only a fallback for when the PDP refuses. So
-the credential's scope is decided by the policy, and a reader who is granted
-`LOAD_TABLE_WITH_WRITE_DELEGATION` receives `s3:PutObject`.
+Polaris refuses anything but a plain yes. A `false`, an error status, a batch answer with fewer
+decisions than it asked for, or an answer with no decision is a 403. A PDP that cannot be reached
+fails the request with a 500. Each request is logged at `DEBUG` in the Polaris container, under
+`org.apache.polaris.extension.auth.authzen`.
 
-The realm generator originally picked bob's scopes with a name heuristic — anything starting
-`LIST_`, `LOAD_` or `GET_` — and `LOAD_TABLE_WITH_WRITE_DELEGATION` starts with `LOAD_`. bob was a
-read-only analyst holding a write credential, and every test still passed. The generator now
-excludes any operation containing `WRITE` from the read set.
+### The Spark Connect plugin
 
-**The result**, read back out of the session policy MinIO embeds in each token:
-
-```
-alice: access-key=F0OEK0HW91LQ... token-len=1183
-bob  : access-key=CZBNUKU1JKZ5... token-len=970
-same access key: False    same session token: False
-
-alice: s3:DeleteObject, s3:PutObject, s3:ListBucket, s3:GetObject, ...
-bob  : s3:ListBucket, s3:GetBucketLocation, s3:GetObject, s3:GetObjectVersion
+```properties
+spark.connect.propagation.authzen.url         http://cerbos:3592
+spark.connect.propagation.authzen.timeout-ms  2000
 ```
 
-`test_the_vended_credential_is_scoped_to_what_the_user_may_do` now asserts exactly that, because
-the previous test — which only compared tokens for inequality — would have passed throughout the
-second bug.
+After the interceptor has checked the token and that the caller owns the session they name, it
+sends one evaluation per request message. That is one per RPC, except a streamed AddArtifacts
+upload, which is asked about once per message:
 
-## Status
+```json
+{
+  "subject":  {"type": "user", "id": "bob", "properties": {"sub": "<uuid>", "roles": ["analyst"]}},
+  "action":   {"name": "AddArtifacts"},
+  "resource": {"type": "spark_connect", "id": "<session id>", "properties": {"user_id": "<uuid>"}},
+  "context":  {"request_id": "<correlation id>"}
+}
+```
 
-| | |
-|---|---|
-| Host suite | 45 passed, 1 skipped |
-| `make bootstrap` | works, once Keycloak has a `root` user |
-| `make demo` | unchanged output; refusal now from the PDP |
-| Polaris version | 1.8.0-SNAPSHOT (fork of `main`), against 1.7.0 on `main` |
+`operation_id` is added to the resource's properties when the request carries one.
 
-The PDP itself can be exercised without Polaris in the picture, which is the quickest way to tell a
-policy problem from a Polaris problem:
+The subject's name and roles come from the token the server has just exchanged, which carries
+`principal_name` and `principal_roles`, so the plugin and Polaris describe the same user the same
+way. The token the client sent carries the roles only as Keycloak's `realm_access.roles`.
+
+The two session checks stay in code. They are about whether the caller is who they claim to be in
+this session, and a policy should not be able to switch them off. The PDP decides what an
+authenticated user may do. A request type the interceptor does not recognise is refused, so a new
+Spark Connect RPC cannot pass unchecked. That is how CloneSession used to skip the session checks
+(FINDINGS §19).
+
+Anything but a clear yes is a no. A `false` decision closes the call with `PERMISSION_DENIED`. A PDP
+that answers with an error, answers something other than a boolean `decision`, or does not answer
+within the timeout closes it with `UNAVAILABLE`, so the two cases can be told apart. Leave
+`authzen.url` unset and the plugin asks nothing, as on `main`.
+
+## The policies
+
+| File | Kind | What it allows |
+|---|---|---|
+| `derived_roles.yaml` | derived roles | turns `principal.attr.roles` into the roles `data_engineer` and `analyst` |
+| `polaris_root_principal.yaml` | principal policy | Polaris's `root`, which the bootstrap runs as, may do anything to Polaris's resource kinds, for requests that carry Polaris's realm |
+| `polaris_root.yaml` | `ROOT` | both roles may list catalogs |
+| `polaris_catalog.yaml` | `CATALOG` | data engineers anything; analysts look and list namespaces |
+| `polaris_namespace.yaml` | `NAMESPACE` | data engineers anything; analysts read `shared` only |
+| `polaris_table.yaml` | `TABLE_LIKE` | data engineers anything; analysts read tables in `shared` only |
+| `spark_connect.yaml` | `spark_connect` | data engineers every RPC; analysts every RPC except `AddArtifacts` |
+
+Anything not allowed is denied. A new Polaris operation or Spark Connect RPC is refused to analysts
+and to callers with no role until a policy names it. Data engineers get it at once on `CATALOG`,
+`NAMESPACE`, `TABLE_LIKE` and `spark_connect` through their `*` rules, and root gets everything on
+Polaris's kinds through its principal policy. A resource type no policy covers is refused to every
+caller except root.
+
+Cerbos watches the directory, so a policy edited with the stack running applies to the next
+request.
+
+`bootstrap.sh` still creates Polaris's catalog-role grants, which nothing reads now. It also assigns
+principal roles to the principals, and those still matter: Polaris only accepts the roles a token
+asks for if the principal has been granted them, and those are the roles it sends to Cerbos.
+
+## What each user gets
+
+| | alice (data_engineer) | bob (analyst) | spark-job's service account (analyst) | carol (no role) |
+|---|---|---|---|---|
+| read `shared.events` | yes | yes | yes | refused by Spark Connect |
+| read `restricted.salaries` | yes | 403 from Polaris | 403 from Polaris | refused by Spark Connect |
+| write | yes | no: the vended key is read-only | no | refused by Spark Connect |
+| `addArtifacts` | yes | refused by Spark Connect | refused by Spark Connect | refused by Spark Connect |
+
+## Things worth knowing
+
+**Cerbos does not treat `subject.properties.roles` as the principal's roles.** Over AuthZEN it puts
+the subject's properties into `principal.attr`. It takes roles only from a property literally named
+`cerbos.roles`, and without one it uses the subject's type, so every caller here has
+`roles: ["user"]`. A rule with `roles: ["analyst"]` never matches what these two callers send, and
+every decision comes back `false` with no warning; only the decision log's `roles: ["user"]` shows
+why. Polaris cannot send `cerbos.roles`, so `derived_roles.yaml` reads the roles back out of the
+attributes, and the rules use `derivedRoles`. svipul's Cerbos policies take another route,
+`roles: ["*"]` with a condition, for the same reason (FINDINGS §20).
+
+**The policy decides how much the vended S3 key may do.** On a delegated load, Polaris asks for
+`LOAD_TABLE_WITH_WRITE_DELEGATION` first and only falls back to read when that is refused. A policy
+that allows an analyst write delegation hands them `s3:PutObject` while every query still works.
+`polaris_table.yaml` leaves it out on purpose, and two tests check it: one asks Cerbos directly, the
+other asks Polaris for the key it vends bob and reads the session policy MinIO embedded in it.
+
+**Polaris caches vended credentials by STS session name**, which is `polaris` for everyone unless
+`INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` is on. Without it, two users whose decisions match
+share one cache entry and get the same key. It is on in `compose.yaml`.
+
+**Even the bootstrap asks the PDP.** With an external PDP, Polaris's root principal is just another
+subject, so `make bootstrap` fails on its first call unless a policy allows `root`. That policy
+matches on the name, so it is limited to Polaris's resource kinds and to requests that carry
+Polaris's realm, which the plugin never sends. A Keycloak user called root gets nothing from it in
+Spark Connect.
+
+**Cerbos is on the path of everything.** If it is down, the plugin answers `UNAVAILABLE` (after up to
+`authzen.timeout-ms` if it hangs) and Polaris fails catalog calls. Polaris still starts, because it
+retries discovery on first use. Whoever answers at `cerbos:3592` decides for both callers, and here
+that is plain HTTP with no authentication; write access to the policy directory is admin access.
+
+## Asking Cerbos directly
+
+Cerbos is published on 3592, so a policy can be tried without Polaris or Spark in the way. This is
+the quickest way to tell a policy problem from anything else:
 
 ```bash
-TOKEN=$(curl -s -d grant_type=client_credentials -d client_id=polaris-pdp \
-  -d client_secret=polaris-pdp-secret \
-  http://keycloak:8080/realms/spark/protocol/openid-connect/token | jq -r .access_token)
-
-curl -s -X POST http://keycloak:8080/realms/spark/authzen/access/v1/evaluation \
-  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"subject":{"type":"user","id":"username:bob"},
-       "action":{"name":"LOAD_TABLE_WITH_READ_DELEGATION"},
-       "resource":{"type":"polaris:TABLE_LIKE","id":"salaries"}}'
+curl -s localhost:3592/access/v1/evaluation -H 'Content-Type: application/json' -d '{
+  "subject":  {"type": "user", "id": "bob", "properties": {"roles": ["analyst"]}},
+  "action":   {"name": "LOAD_TABLE_WITH_READ_DELEGATION"},
+  "resource": {"type": "TABLE_LIKE", "id": "poc_catalog/restricted/salaries",
+               "properties": {"name": "salaries",
+                              "parents": [{"type": "CATALOG", "name": "poc_catalog"},
+                                          {"type": "NAMESPACE", "name": "restricted"}]}}}'
 # {"decision":false}
 ```
+
+Every decision Cerbos makes is in `docker compose logs cerbos`, with the caller's correlation ID, so
+`make cid CID=<uuid>` shows it beside the Spark Connect and Polaris lines for the same request.
