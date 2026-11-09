@@ -192,6 +192,22 @@ def test_unary_stream_is_intercepted_too():
     assert captured[DEFAULT_TOKEN_HEADER] == "jwt"
 
 
+@pytest.mark.parametrize("shape", ["intercept_stream_unary", "intercept_stream_stream"])
+def test_streaming_requests_are_intercepted_too(shape):
+    """AddArtifacts is stream-unary; without this it reached the server with no token at all."""
+    interceptor = PropagationInterceptor(FakeProvider("jwt"), session_correlation_id="c")
+    captured = {}
+
+    def continuation(details, request_iterator):
+        captured.update(dict(details.metadata))
+        return None
+
+    getattr(interceptor, shape)(continuation, FakeCallDetails(), iter(["chunk"]))
+
+    assert captured[DEFAULT_TOKEN_HEADER] == "jwt"
+    assert captured[DEFAULT_CORRELATION_HEADER] == "c"
+
+
 # -------------------------------------------------------------------- subject --
 
 def test_subject_is_read_from_the_token():

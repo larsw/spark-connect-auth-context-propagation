@@ -605,3 +605,25 @@ for exactly one query and then quietly sends a stale token.
 For completeness, the versions all agree on React 19: Blueprint 6 declares `react: 18 || 19`,
 React Router 8 requires `>=19.2.7`, and YASGUI declares no peer at all because it is vanilla TS
 that takes a DOM element.
+
+## 18. The Python client never authenticated `addArtifacts`
+
+grpc-python has one client-interceptor interface per call shape, and an interceptor only sees the
+shapes it implements. `PropagationInterceptor` implemented unary-unary and unary-stream, which
+covers every Spark Connect RPC but one: the unary ones (AnalyzePlan, Config, ArtifactStatus,
+Interrupt, ReleaseExecute, ReleaseSession, FetchErrorDetails, CloneSession) and the server-streaming
+ExecutePlan and ReattachExecute. It did not implement stream-unary, and `AddArtifacts`, which uploads
+a file in chunks, is stream-unary. So every `spark.addArtifacts(...)` went out with no
+`x-user-token` and no correlation ID, and the server refused it:
+
+```
+UNAUTHENTICATED: No user token supplied in the 'x-user-token' header (correlation-id=srv-e7485ae6-...)
+```
+
+Nothing exercised `addArtifacts` until a policy about it was written on the `feat/authzen-cerbos`
+branch, so this was present from the start. The class docstring even warned about the failure mode
+("implementing only one silently leaves half the traffic unauthenticated") and then stopped at two of
+the four shapes. The interceptor now implements stream-unary and stream-stream too, and
+`test_streaming_requests_are_intercepted_too` covers both.
+
+The JVM client is not affected: a `ClientInterceptor` sees every call shape through one method.

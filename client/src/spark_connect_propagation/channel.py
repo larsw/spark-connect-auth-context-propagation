@@ -53,13 +53,20 @@ class _CallDetails(
 
 
 class PropagationInterceptor(
-    grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClientInterceptor
+    grpc.UnaryUnaryClientInterceptor,
+    grpc.UnaryStreamClientInterceptor,
+    grpc.StreamUnaryClientInterceptor,
+    grpc.StreamStreamClientInterceptor,
 ):
     """Stamps the auth and correlation headers onto every outgoing RPC.
 
-    Both interceptor interfaces are required: Spark Connect uses unary-unary for AnalyzePlan,
-    Config, Interrupt and ReleaseSession, and unary-stream for ExecutePlan and ReattachExecute.
-    Implementing only one silently leaves half the traffic unauthenticated.
+    grpc-python has one interceptor interface per call shape, and an interceptor only sees the
+    shapes it implements. Spark Connect uses unary-unary for AnalyzePlan, Config, Interrupt and
+    ReleaseSession, unary-stream for ExecutePlan and ReattachExecute, and stream-unary for
+    AddArtifacts, which uploads a file in chunks. Leaving a shape out sends those calls with no
+    headers at all: before stream-unary was added here, every addArtifacts() reached the server
+    without a token and was refused as UNAUTHENTICATED. Stream-stream is implemented too, so a
+    future bidirectional RPC is covered rather than silently skipped.
 
     The token is fetched per call rather than captured once, so a provider that refreshes keeps
     a long-lived Spark session alive instead of failing when the original token expires.
@@ -106,6 +113,12 @@ class PropagationInterceptor(
 
     def intercept_unary_stream(self, continuation, client_call_details, request):
         return continuation(self._with_headers(client_call_details), request)
+
+    def intercept_stream_unary(self, continuation, client_call_details, request_iterator):
+        return continuation(self._with_headers(client_call_details), request_iterator)
+
+    def intercept_stream_stream(self, continuation, client_call_details, request_iterator):
+        return continuation(self._with_headers(client_call_details), request_iterator)
 
 
 class PropagatingChannelBuilder(DefaultChannelBuilder):
