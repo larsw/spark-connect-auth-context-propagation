@@ -29,8 +29,10 @@ fi
 
 cd "$here"
 # npm records what it installed in node_modules/.package-lock.json; reinstall once package-lock.json
-# is newer, so a checkout that adds a package gets it.
-[[ node_modules/.package-lock.json -nt package-lock.json ]] || npm ci --no-audit --no-fund --loglevel=error
+# is newer, so a checkout that adds a package gets it. Without install scripts: the only one is
+# Puppeteer's (through DeckTape), which downloads a Chrome that only render-pdf.sh needs, and installs.
+[[ node_modules/.package-lock.json -nt package-lock.json ]] \
+  || npm ci --ignore-scripts --no-audit --no-fund --loglevel=error
 
 echo "==> reveal.js, highlight.js and the theme"
 rm -rf "$out/reveal.js" "$out/highlight.js" "$out/theme"
