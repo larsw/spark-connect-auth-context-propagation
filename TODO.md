@@ -50,7 +50,7 @@ without reading §2 first — several were forced by verified upstream facts.
 | Iceberg | `iceberg-spark-runtime-4.1_2.13:1.11.0` + `iceberg-aws-bundle:1.11.0` |
 | Polaris | `apache/polaris:1.7.0` (+ `apache/polaris-admin-tool:1.7.0`) |
 | Keycloak | `quay.io/keycloak/keycloak:26.7.0` |
-| MinIO | `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z` (+ `quay.io/minio/mc`) |
+| MinIO | `cgr.dev/chainguard/minio` (+ `cgr.dev/chainguard/minio-client`), pinned by digest; the server reports `RELEASE.2026-11-09T00-10-40Z` |
 | Python client | `pyspark-client==4.1.3` (1.6 MB, pure Python) |
 | JVM | Java 21, `maven.compiler.release=21` |
 | JWT lib | `nimbus-jose-jwt` (Spark ships jjwt 0.12.6, so no clash) |
@@ -168,7 +168,8 @@ Headers avoid this. This is why decision #4 is correct.
 - Connect entrypoint class: `org.apache.spark.sql.connect.service.SparkConnectServer`.
   `sbin/start-connect-server.sh` daemonises via `spark-daemon.sh` — wrong for a container;
   `exec spark-submit` in the foreground instead.
-- Docker Hub `minio/minio` is **404**; images moved to `quay.io/minio/minio`.
+- Docker Hub `minio/minio` is **404**; images moved to `quay.io/minio/minio`, which since 2026-11
+  refuses anonymous pulls too. The stack now uses Chainguard's public images, pinned by digest.
 
 ### 2.12 Polaris principals must pre-exist, but resolve by name
 `DefaultAuthenticator` states plainly: *"it does not support federated principals that are

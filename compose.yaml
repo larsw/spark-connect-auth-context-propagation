@@ -39,9 +39,13 @@ services:
       start_period: 15s
 
   # ------------------------------------------------------------------- MinIO --
-  # Docker Hub's minio/minio is gone (404); the images live on quay.io now.
+  # Docker Hub's minio/minio is gone (404), and quay.io/minio/* now refuses anonymous pulls, so
+  # MinIO and mc come from Chainguard's public images. Chainguard publishes only `latest` for free,
+  # so both are pinned by digest. The image has no curl and no grep (hence the healthcheck below),
+  # and runs as uid 65532: a minio-data volume left from the old root-run image may not be writable
+  # by it, and `docker compose down -v` (or removing that one volume) starts it clean.
   minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: cgr.dev/chainguard/minio:latest@sha256:616286de6ef3a1892876b126e745e152d8e03add6357203f8a1f854bdd1dce76
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -60,24 +64,22 @@ services:
       # while Polaris happily keeps serving metadata that points at them.
       - minio-data:/data
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://127.0.0.1:9000/minio/health/live"]
+      # bash's /dev/tcp in place of curl: ask for the liveness endpoint and read the status line.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /minio/health/live HTTP/1.1\\r\\nHost: minio\\r\\nConnection: close\\r\\n\\r\\n' >&3 && read -r status <&3 && [[ $$status == *' 200 '* ]]"]
       interval: 3s
       timeout: 5s
       retries: 20
 
+  # The mc image has no shell, so the alias comes from MC_HOST_poc and the command is one mc call.
   minio-setup:
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    image: cgr.dev/chainguard/minio-client:latest@sha256:10388d580a724f356b94c9b2631b5a179039cabe8c76e9b37d86ed007d569b05
     depends_on:
       minio:
         condition: service_healthy
-    entrypoint: "/bin/sh"
-    command:
-      - "-c"
-      - >-
-        mc alias set poc http://minio:9000 minio_root m1n1opwd &&
-        (mc mb --ignore-existing poc/warehouse) &&
-        mc ls poc &&
-        echo "bucket ready"
+    entrypoint: ["/usr/bin/mc"]
+    command: ["mb", "--ignore-existing", "poc/warehouse"]
+    environment:
+      MC_HOST_poc: "http://minio_root:m1n1opwd@minio:9000"
 
   minio-audit:
     image: python:3.12-slim
