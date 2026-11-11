@@ -1,0 +1,508 @@
+// No document title: asciidoctor-revealjs would make a title slide of it, whatever :notitle: says.
+// The cover below is the title slide, and its title is the page's.
+:description: The feat/authzen-openfga branch: Polaris and the Spark Connect plugin ask OpenFGA for authorization decisions over the OpenID AuthZEN Authorization API, and what fitting OpenFGA to them turned up.
+:revealjs_theme: white
+:revealjs_width: 1280
+:revealjs_height: 720
+:revealjs_margin: 0
+:revealjs_center: false
+:revealjs_transition: fade
+:revealjs_slideNumber: c/t
+:revealjs_hash: true
+// Printed from a browser (index.html?print-pdf), one page per slide with every step shown, as
+// render-pdf.sh prints it: no page for each step of a diagram.
+:revealjs_pdfseparatefragments: false
+:source-highlighter: highlightjs
+:source-language: python
+:data-uri:
+// The deck's name in the title band comes from authzen-with-openfga-docinfo-revealjs.html.
+:docinfo: private
+// The deck's diagrams, inlined (opts=inline) so that their parts can be fragments, shown one click
+// at a time; the PDF shows every part.
+:diagrams: {docdir}/images
+// The code and the policy on the slides are included from the repository by tag.
+:repo: {docdir}/../../..
+:server: {repo}/server/src/main/java/io/sparkconnect/propagation
+:openfga: {repo}/docker/openfga
+
+[.cover,state=bookend]
+== Authorization through AuthZEN, with OpenFGA
+
+[.kicker]
+Identity through Spark Connect, part three
+
+[.lead]
+On the `feat/authzen-openfga` branch, OpenFGA replaces Cerbos as the decision point for Polaris and the Spark Connect plugin.
+
+[.notes]
+****
+The previous deck covered the Cerbos branch: Polaris and the Spark Connect plugin both ask a policy decision point over the OpenID AuthZEN Authorization API. This branch is cut from that one, and it swaps Cerbos for OpenFGA.
+
+The question was whether the same two callers and the same rules would work with a decision point that's built around relationships rather than attribute policies. They do: every user gets the same answers. But it took four changes to the callers, and OpenFGA's mapping turned up several surprises. Those are FINDINGS section 21, and they're most of this deck.
+****
+
+== Agenda
+
+. What changes from the Cerbos branch
+. How OpenFGA reads an AuthZEN request
+. Tuples, one per object, and why the ids are fixed
+. The policy as a model
+. Where OpenFGA answers with an error
+. Both enforcement points
+. What each user gets, the correlation ID, and the comparison with Cerbos
+. Tests, costs and how to run it
+
+[.notes]
+****
+About twenty minutes. If people remember one slide, it should be the one on errors: OpenFGA can answer a malformed question with an HTTP 400 where Cerbos would answer false. The callers' failure handling decides what that means.
+****
+
+== What changes from the Cerbos branch
+
+[cols="3,4,4",options=header]
+|===
+| |Stays the same |Changes
+
+|Callers
+|Polaris fork and the Spark Connect plugin, over AuthZEN
+|Both send a fixed `resource.id`; the plugin always sends `roles`
+
+|Policy
+|Roles from the token; analysts read `shared`; no write delegation for them
+|Seven YAML files become one Python file that builds a JSON model and 18 tuples
+
+|Wiring
+|One PDP for both callers, failing closed
+|The store's id reaches both callers at startup, through a shared volume
+
+|Outcome
+|Every user gets the same answers
+|The answers can now also be HTTP 400
+|===
+
+[.notes]
+****
+The callers, the rules, and the outcome stay the same. Bob still reads shared and gets a read-only key, carol is still refused, and only alice may upload artifacts.
+
+The changes are all about fitting OpenFGA's model. The resource ids become fixed, the plugin always sends a roles list, and both callers need the store's id, which only exists at runtime. The rest of the deck explains each one.
+****
+
+== How OpenFGA reads an AuthZEN request
+
+image::{diagrams}/fga-mapping.svg["How OpenFGA reads an AuthZEN request",opts=inline,role=diagram]
+
+[.notes]
+****
+OpenFGA added AuthZEN as an experimental feature, turned on with `--experimentals authzen`. Each evaluation becomes a Check.
+
+The subject becomes the user, `user:bob`. The action name becomes the relation. The resource becomes the object.
+
+Click. The properties don't disappear. They're flattened into the Check's condition context, with a prefix: `subject.properties.roles` becomes `subject_roles`, and the resource's parents become `resource_parents`. The request context keeps its own names, so the correlation ID arrives as `request_id`.
+
+Click. The tuple that answers this is on `user:*`, the wildcard user, with a condition. The condition is CEL that reads the roles and the parents. So the decision is really made by the condition, not by a relationship. We'll see why on the next slides.
+****
+
+== Two enforcement points, one store
+
+image::{diagrams}/fga-two-peps.svg["The stack on this branch, with OpenFGA as the PDP",opts=inline,role=diagram]
+
+[.notes]
+****
+The data path is unchanged from main and from the Cerbos branch, so this diagram leaves it out.
+
+Click. Both enforcement points ask OpenFGA over AuthZEN. The plugin asks with the RPC name as the action; Polaris with its operation name.
+
+Click. The new part is `openfga-setup`, a one-shot container that runs `docker/openfga/setup.py` on every `make up`. It makes the store, writes the model and the tuples, and leaves the store's id on a volume. Polaris and Spark Connect read it from there when they start. Why that's needed is two slides on.
+****
+
+== Tuples, one per object
+
+image::{diagrams}/fga-fixed-ids.svg["OpenFGA needs a tuple for every object",opts=inline,role=diagram]
+
+[.notes]
+****
+OpenFGA decides from relationship tuples, and a tuple names one object. There's a wildcard for the user, `user:*`, but not for the object.
+
+The usual way to use it is one object per table, with tuples written as tables and memberships are created. Click. But Polaris doesn't write tuples when alice creates a table, and nothing else on the request path does. So a question about a new table would be a plain false, even for alice.
+
+Click. So both callers send a fixed id. Polaris has a mapping setting, `resource-id-format: type`, that sends the entity type as the id, so every table is `TABLE_LIKE:TABLE_LIKE`. The plugin got a new setting, `authzen.resource-id`, and every session is `spark_connect:spark-connect`. The tuples are written once. Which table is meant arrives in the properties, and conditions decide from them.
+
+Click. That means OpenFGA's relationship graph does no work here. Every decision is a condition. Using the graph would mean writing tuples as things change, and that's a different project.
+****
+
+== The store's id is only known at runtime
+
+[source,shell]
+----
+include::{repo}/docker/spark/entrypoint.sh[tag=store-id,indent=0]
+----
+
+* Every AuthZEN path is `/stores/<id>/access/v1/...`, and the id is made with the store. There is no default store
+* Discovery is at `/.well-known/authzen-configuration/<id>`, not where Polaris looks for it
+* Polaris reads both endpoints from `/openfga/polaris.properties`, through `QUARKUS_CONFIG_LOCATIONS`
+
+[.notes]
+****
+With Cerbos, each caller needed one base URL, and Polaris found the endpoints through the discovery document. OpenFGA's endpoints are per store, and a store's id is generated when it's created.
+
+So `openfga-setup` writes the id to a volume. Polaris gets its two endpoints from a properties file there, through Quarkus's `QUARKUS_CONFIG_LOCATIONS`, without any change to the fork. The Spark image's entrypoint builds the plugin's URL from the id. If `OPENFGA_URL` is set and the id is missing, it refuses to start, rather than run a server where nobody authorises anything.
+
+The store is in memory. If the OpenFGA container restarts on its own, the store is gone and both callers hold a stale id. A persistent datastore would fix that.
+****
+
+== Polaris as an enforcement point
+
+[source,yaml]
+----
+include::{repo}/compose.yaml[tag=polaris-authzen,indent=0]
+----
+
+* No change to the fork: the endpoints come from a file, and `resource-id-format` was already a mapping setting
+* Anything but a plain yes fails the request: a false or an error status is a 403
+* It asks one Access Evaluation per question, and batches only when one authorization has several
+
+[.notes]
+****
+Polaris needed only configuration. The fork already had the mapping settings, because the earlier Keycloak branch needed `resource-id-format: type` for the same reason: Keycloak also resolves resource ids against things registered in advance.
+
+The fork treats anything but a plain yes as a deny, and that matters here, because OpenFGA sometimes answers with an error. We'll see that shortly.
+
+In one seed and one test run, OpenFGA's log had 528 single evaluations and one batch.
+****
+
+== The policy: holders and operations
+
+[.columns]
+--
+[.column.code]
+[source,python]
+----
+include::{openfga}/setup.py[tag=table,indent=0]
+----
+
+[.column]
+* A holder is a relation filled by one tuple
+* An operation is the union of the holders that may do it
+* `setup.py` turns this into the model and the tuples
+* Rerun `openfga-setup` to change the policy
+--
+
+[.notes]
+****
+This is the table entry in `setup.py`. Each resource type has one object, a few holders, and its operations. A holder is a relation, here root, data_engineer and analyst_in_shared, and each is filled by exactly one tuple: `user:*` with a condition, or `user:root` with one.
+
+Each operation becomes a relation that's the union of the holders that may do it. So LOAD_TABLE is root or data_engineer or analyst_in_shared, and DROP_TABLE is root or data_engineer.
+
+The script writes the model as a new version, which OpenFGA uses from the next request, and makes the stored tuples match, deleting any it no longer wants. So it's safe to rerun against a running stack.
+****
+
+== "Anything" is 119 relations
+
+[.lead]
+OpenFGA has no wildcard relation, so every operation is listed, on every Polaris type.
+
+[source,python]
+----
+include::{openfga}/setup.py[tag=tuples,indent=0]
+----
+
+* `polaris-operations.txt` holds the 119 operations in the fork's `PolarisAuthorizableOperation`
+* A new Polaris operation is refused to everyone, root included, until it is added there
+
+[.notes]
+****
+In Cerbos, data engineers had `actions: ["*"]` on catalogs, namespaces and tables, and root had a wildcard on everything. OpenFGA has no wildcard relation. So each of Polaris's eight resource types gets all 119 operations as relations, generated from a list taken from the fork's source.
+
+The flip side: a new Polaris operation isn't a relation until it's added, so OpenFGA refuses it for everyone, including root. That's safe, but someone upgrading Polaris has to remember it.
+
+The code here builds the tuples: one per holder, per type. That's where the 18 come from.
+****
+
+== The model is JSON, not the DSL
+
+[.columns]
+--
+[.column.code]
+[source,python]
+----
+include::{openfga}/setup.py[tag=table-condition,indent=0]
+----
+
+[.column]
+* `parents` is a list of maps: `list<map<string>>`
+* The API accepts that type, and evaluates it correctly
+* The DSL and `fga model transform` do not: `mismatched input 'map'`
+* So `setup.py` builds the model as the API's JSON
+--
+
+[.notes]
+****
+OpenFGA's usual way to write a model is its DSL, a `.fga` file. We started there. The condition for tables needs a parameter for Polaris's `parents`, which is a list of maps, each with a type and a name.
+
+The DSL's grammar rejects a nested type like `list<map<string>>`. The API accepts exactly the same type in JSON and evaluates it correctly, which we checked with a throwaway OpenFGA before building anything on it.
+
+So there's no `.fga` file. `setup.py` builds the JSON model from the short table on the previous slide, and `--print-model` prints it.
+
+One more small trap while probing: a condition named with one letter is accepted in a model, but a tuple that names it is refused. Names need at least two characters.
+****
+
+== Some questions get an error, not a no
+
+image::{diagrams}/fga-errors.svg["Some questions get an error, not a no",opts=inline,role=diagram]
+
+[.notes]
+****
+This is the slide to remember.
+
+Bob's question is answered normally. Click. But OpenFGA checks that every parameter a condition declares is in the request before it evaluates anything. Polaris leaves `roles` out when a principal has none. So for carol, OpenFGA answers HTTP 400, missing context parameters. An action that isn't a relation is also a 400. Inside a batch, the item comes back as false, with the error in its context.
+
+With Cerbos, all of these were plain false: a missing attribute just made the condition false, and an unknown action fell through to deny.
+
+Click. Polaris treats any error as a deny, so nothing gets through. The plugin distinguishes a false from no answer, so it can report PERMISSION_DENIED or UNAVAILABLE. A 400 looks like no answer. carol would have got UNAVAILABLE, which tells an operator the PDP is down when it isn't. So the plugin now always sends `roles`, as an empty list when there are none.
+****
+
+== Spark Connect as an enforcement point
+
+[source,properties]
+----
+include::{repo}/docker/spark/spark-defaults.conf[tag=authzen,indent=0]
+----
+
+[source,java]
+----
+include::{server}/AuthZenClient.java[tag=roles,indent=0]
+----
+
+* Every session is the object `spark_connect:spark-connect`; the session id moves to `properties.session_id`
+* Without `authzen.resource-id`, `resource.id` is the session id, as before
+* `roles` is always sent, even as `[]`; the action is still the RPC's name
+
+[.notes]
+****
+Two changes to the plugin, both small.
+
+The new setting `authzen.resource-id` sends a fixed id, and the session id goes into the resource's properties. Without the setting, the plugin behaves as it did for Cerbos.
+
+And the AuthZEN client now always sends `roles`. That's the fix for the 400 on the previous slide.
+
+Everything else stays: the action is the RPC name, the subject comes from the exchanged token, the two identity checks stay in code before the PDP is asked, and the interceptor refuses any request type it doesn't recognise.
+****
+
+== The policy decides what the S3 key may do
+
+image::{diagrams}/fga-delegation.svg["Write delegation is asked first",opts=inline,role=diagram]
+
+[.notes]
+****
+This is unchanged from the Cerbos branch, and it still matters most. On a delegated load, Polaris asks for write delegation first and only falls back to read when that's refused. If analysts held LOAD_TABLE_WITH_WRITE_DELEGATION, they'd get a key with `s3:PutObject`, and every query would still work.
+
+In OpenFGA it's left out of what `analyst_in_shared` holds. The same two tests guard it: one asks OpenFGA directly, the other reads the session policy MinIO embedded in the key Polaris vends bob.
+****
+
+== What each user gets
+
+[cols="3,2,2,2,2",options=header]
+|===
+| |alice +
+data_engineer |bob +
+analyst |spark-job +
+analyst |carol +
+no role
+
+|Read `shared.events`
+|[.ok]#yes#
+|[.ok]#yes#
+|[.ok]#yes#
+|[.no]#refused#
+
+|Read `restricted.salaries`
+|[.ok]#yes#
+|[.no]#403 from Polaris#
+|[.no]#403 from Polaris#
+|[.no]#refused#
+
+|S3 key can write
+|[.ok]#yes#
+|[.no]#no#
+|[.no]#no#
+|[.no]#refused#
+
+|`addArtifacts`
+|[.ok]#yes#
+|[.no]#refused#
+|[.no]#refused#
+|[.no]#refused#
+|===
+
+[.lead]
+The same table as on the Cerbos branch. OpenFGA made every one of these decisions.
+
+[.notes]
+****
+"refused" means Spark Connect refused the RPC with PERMISSION_DENIED. "403" means Polaris refused the catalog operation.
+
+This is the result we wanted: swapping the PDP changed nothing a user can see.
+****
+
+== The correlation ID, without a decision log
+
+[source,json]
+----
+{"grpc_method": "Evaluation",
+ "raw_request": {"subject": {"type": "user", "id": "service-account-spark-job", ...},
+                 "action": {"name": "LOAD_TABLE_WITH_READ_DELEGATION"},
+                 "context": {"request_id": "<correlation id>", ...}},
+ "raw_response": {"decision": false}, "request_id": "<OpenFGA's own id>", ...}
+----
+
+* OpenFGA has no decision log, and ignores the caller's `X-Request-ID`
+* It logs every request at info, with the request and the answer
+* Both callers put the correlation ID in the AuthZEN `context`, so it is in that log
+* `make cid` and the service-account test find OpenFGA's decision by it
+
+[.notes]
+****
+Cerbos had a decision log that recorded the caller's X-Request-ID. OpenFGA has neither: it makes its own request id and returns it in a response header.
+
+What it does have is a request log at info level, as JSON, with the raw request and the raw response. Since both callers also put the correlation ID in the AuthZEN context, it shows up in the raw request. So `make cid` still finds the decision, and the service-account test reads OpenFGA's log to check the refusal was made for `service-account-spark-job`.
+
+What's missing compared with Cerbos is why a decision was false. The log says what was asked and what came back, not which rule applied.
+****
+
+== Compared with Cerbos
+
+[cols="3,4,4",options=header]
+|===
+| |Cerbos |OpenFGA
+
+|Policy
+|Seven YAML files
+|`setup.py`: a JSON model and 18 tuples
+
+|"Anything"
+|`actions: ["*"]`
+|119 relations per Polaris type
+
+|Resources
+|Ids as Polaris sends them
+|One fixed object per type
+
+|Missing attribute, unknown action
+|`false`
+|HTTP 400
+
+|Endpoint
+|One URL, with discovery
+|Per store; the id is passed at startup
+
+|Reload
+|Watched directory
+|Rerun `openfga-setup`
+
+|Decision log
+|Yes, with `X-Request-ID`
+|No; a request log with the context
+|===
+
+[.notes]
+****
+Both work, and both give the same answers. Cerbos fits this problem more naturally: the callers send attributes, and Cerbos is an attribute policy engine. Its trap was the roles mapping.
+
+OpenFGA is a relationship engine, and here it's used as a CEL engine on wildcard tuples. Its traps are the request shape having to match the model exactly, and the store id plumbing.
+
+OpenFGA would pay off if the decisions really were about relationships: who owns which table, which team a namespace belongs to. That needs something writing tuples as things change.
+****
+
+== Security of a PDP on the network
+
+* Whoever answers at `openfga:8080` decides for Polaris and Spark Connect. Here it's plain HTTP with no authentication
+* The API that writes models and tuples is on the same port as AuthZEN: whoever can reach one can change the policy
+* Port 8093 is published for curl
+* `root` gets one tuple, `user:root`, only on Polaris's types, and its condition needs Polaris's realm, which the plugin never sends
+* The plugin's resource id is fixed, so the session checks in code are the only thing tying a request to its session
+
+[.notes]
+****
+OpenFGA can be configured with preshared keys or OIDC for its API, which we didn't do. In production the write API would need its own credentials, separate from whatever the callers use to ask questions. Here, anyone on the compose network could rewrite the model.
+
+The root tuple names the user, so a Keycloak user called root would match it. It only exists on Polaris's resource types, and its condition requires Polaris's realm attribute, which the plugin never sends. A test checks that root gets nothing in Spark Connect.
+
+With a fixed resource id, the PDP no longer sees which session is asked about as the object, only as a property. That's fine, because session ownership is checked in code before the PDP is asked, and that check was deliberately kept out of policy.
+****
+
+== Tests
+
+[.columns]
+--
+[.column]
+.New or changed on this branch
+* Nine requests go straight to OpenFGA, in the shapes Polaris and the plugin send
+* Two of them pin the errors: a missing parameter and an unknown action are a 400
+* The service account's refusal is found in OpenFGA's request log
+* The plugin's unit test now expects `roles: []` for a subject with none
+
+[.column]
+.The whole suite
+* 78 Python tests pass inside the compose network: 44 against the running stack and 34 client unit tests
+* The Java plugin's 38 unit tests pass
+* bob's vended key is checked for a read-only session policy
+* The JVM and Rust integration suites were not rerun
+--
+
+[.notes]
+****
+The direct tests fail on any error, so a typo in an action name can't pass as a refusal. The two tests that expect errors check the message, so if OpenFGA changes this behaviour we'll find out.
+
+The policy was probed with a throwaway OpenFGA before any of it was written: nested condition types, the 400 for a missing parameter, what the log records. The FINDINGS entry lists what each probe showed.
+****
+
+== Costs and open questions
+
+* OpenFGA's AuthZEN API is experimental, as is the fork's AuthZEN support; Polaris is a 1.8.0 snapshot
+* The store lives in memory: restarting OpenFGA alone loses it, and both callers keep a stale id
+* If OpenFGA is down, nothing works: both callers fail closed
+* A new Polaris operation is refused to everyone until it is added to `polaris-operations.txt`
+* Nothing writes tuples, so the relationship graph is unused. Using it means synchronising roles from Keycloak, or registering tables as Polaris creates them
+
+[.notes]
+****
+A persistent datastore, Postgres, MySQL or SQLite, would keep the store and its id across restarts. It wasn't worth the extra migration step for the PoC.
+
+The last point is the real open question. If the goal is attribute-based decisions on what the callers already send, Cerbos is the simpler fit. If the goal is relationship-based decisions, something has to write tuples, and that's new work: a Keycloak event listener for role membership, or a Polaris hook when tables are created.
+****
+
+== Building and running it
+
+[source,shell]
+----
+make polaris-image      # builds the fork in an eclipse-temurin:21-jdk container
+make build && make up   # openfga-setup loads the policy on every up
+make test-container     # the suite inside the compose network
+docker compose run --rm openfga-setup     # apply an edited policy
+STORE=$(docker compose exec -T spark-connect cat /openfga/store-id)
+curl -s localhost:8093/stores/$STORE/access/v1/evaluation -d '{"subject":{"type":"user",
+  "id":"bob","properties":{"roles":["analyst"]}},"action":{"name":"AddArtifacts"},
+  "resource":{"type":"spark_connect","id":"spark-connect"}}'      # {"decision":false}
+----
+
+* OpenFGA is published on 8093
+* `python3 docker/openfga/setup.py --print-model` prints the model
+
+[.notes]
+****
+Asking OpenFGA directly is still the fastest way to tell a policy problem from anything else. The store id is in the shared volume, so read it from the Spark Connect container.
+
+Remember the roles property: leave it out and you get a 400, not a false.
+****
+
+[.closing,state=bookend,background-color=#1b2a41]
+== Questions?
+
+* Setup: `docs/authzen-pdp.md`
+* Policy: `docker/openfga/setup.py`
+* What it turned up: `FINDINGS.md`, section 21
+
+[.notes]
+****
+Good places to start: whether this problem wants an attribute engine or a relationship engine, who would write the tuples if we wanted the second, and how to handle a PDP answering with an error rather than a decision.
+****

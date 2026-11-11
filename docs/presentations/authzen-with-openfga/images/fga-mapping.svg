@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 450" width="1184" height="450" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="fga-mapping-title fga-mapping-desc">
+  <title id="fga-mapping-title">How OpenFGA reads an AuthZEN request</title>
+  <desc id="fga-mapping-desc">On the left, the AuthZEN request Polaris sends when bob loads shared.events with read delegation: subject type user, id bob, properties roles analyst and realm POLARIS; action LOAD_TABLE_WITH_READ_DELEGATION; resource type TABLE_LIKE, id TABLE_LIKE, properties name events and parents CATALOG poc_catalog and NAMESPACE shared; context request_id, the correlation ID. On the right, the OpenFGA Check it becomes: user user:bob, relation LOAD_TABLE_WITH_READ_DELEGATION, object TABLE_LIKE:TABLE_LIKE, and a condition context in which the properties are flattened and prefixed: subject_roles, subject_realm, resource_name, resource_parents, and request_id unprefixed. Then the tuple that answers it: TABLE_LIKE:TABLE_LIKE, relation analyst_in_shared, user user:*, with the condition analyst_in_shared_table, whose CEL expression reads subject_roles and resource_parents, and is true here. The decision is true.</desc>
+  <defs>
+    <marker id="fga-mapping-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="fga-mapping-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="fga-mapping-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="fga-mapping-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+
+  <text class="d-xs d-b" x="0" y="18">AUTHZEN REQUEST (FROM POLARIS)</text>
+  <text class="d-xs d-b" x="640" y="18">OPENFGA CHECK</text>
+
+  <rect class="d-box2" x="0" y="30" width="520" height="66" rx="8"/>
+  <text class="d-s d-b" x="16" y="54">subject</text>
+  <text class="d-xs d-m" x="110" y="54">type user, id bob</text>
+  <text class="d-xs d-m" x="110" y="80">properties: roles [analyst], realm POLARIS</text>
+
+  <rect class="d-box2" x="0" y="106" width="520" height="44" rx="8"/>
+  <text class="d-s d-b" x="16" y="134">action</text>
+  <text class="d-xs d-m" x="110" y="134">LOAD_TABLE_WITH_READ_DELEGATION</text>
+
+  <rect class="d-box2" x="0" y="160" width="520" height="90" rx="8"/>
+  <text class="d-s d-b" x="16" y="184">resource</text>
+  <text class="d-xs d-m" x="110" y="184">type TABLE_LIKE, id TABLE_LIKE</text>
+  <text class="d-xs d-m" x="110" y="210">properties: name events,</text>
+  <text class="d-xs d-m" x="110" y="232">  parents [CATALOG poc_catalog, NAMESPACE shared]</text>
+
+  <rect class="d-cid" x="0" y="260" width="520" height="44" rx="8"/>
+  <text class="d-s d-b d-cidt" x="16" y="288">context</text>
+  <text class="d-xs d-m" x="110" y="288">request_id: the correlation ID</text>
+
+  <g class="fragment" data-fragment-index="1">
+  <line class="d-line" x1="520" y1="54" x2="638" y2="54" marker-end="url(#fga-mapping-arrow)"/>
+  <line class="d-line" x1="520" y1="128" x2="638" y2="98" marker-end="url(#fga-mapping-arrow)"/>
+  <line class="d-line" x1="520" y1="184" x2="638" y2="142" marker-end="url(#fga-mapping-arrow)"/>
+  <path class="d-line d-dash" d="M520,80 C580,80 580,200 638,200" marker-end="url(#fga-mapping-arrow)"/>
+  <path class="d-line d-dash" d="M520,215 C580,215 580,226 638,226" marker-end="url(#fga-mapping-arrow)"/>
+  <line class="d-cidline" x1="520" y1="282" x2="638" y2="282" marker-end="url(#fga-mapping-arrow-cid)"/>
+
+  <rect class="d-box" x="640" y="30" width="544" height="44" rx="8"/>
+  <text class="d-s d-b" x="656" y="58">user</text>
+  <text class="d-xs d-m" x="760" y="58">user:bob</text>
+  <rect class="d-box" x="640" y="76" width="544" height="44" rx="8"/>
+  <text class="d-s d-b" x="656" y="104">relation</text>
+  <text class="d-xs d-m" x="760" y="104">LOAD_TABLE_WITH_READ_DELEGATION</text>
+  <rect class="d-box" x="640" y="122" width="544" height="44" rx="8"/>
+  <text class="d-s d-b" x="656" y="150">object</text>
+  <text class="d-xs d-m" x="760" y="150">TABLE_LIKE:TABLE_LIKE</text>
+  <rect class="d-box" x="640" y="176" width="544" height="128" rx="8"/>
+  <text class="d-s d-b" x="656" y="202">context</text>
+  <text class="d-xs d-m" x="760" y="202">subject_roles    [analyst]</text>
+  <text class="d-xs d-m" x="760" y="226">subject_realm    POLARIS</text>
+  <text class="d-xs d-m" x="760" y="250">resource_name    events</text>
+  <text class="d-xs d-m" x="760" y="274">resource_parents [...]</text>
+  <text class="d-xs d-m d-cidt" x="760" y="296">request_id       unprefixed</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="2">
+  <rect class="d-ok" x="0" y="326" width="1184" height="120" rx="8"/>
+  <text class="d-s d-b" x="16" y="352">The tuple that answers it</text>
+  <text class="d-xs d-m" x="16" y="380">TABLE_LIKE:TABLE_LIKE  #analyst_in_shared  @user:*  with analyst_in_shared_table</text>
+  <text class="d-xs d-m" x="16" y="406">"analyst" in subject_roles &amp;&amp; resource_parents.exists(p, p["type"] == "NAMESPACE" &amp;&amp; p["name"] == "shared")</text>
+  <text class="d-s d-b d-okt" x="16" y="434">{"decision": true}</text>
+  <text class="d-xs" x="190" y="434">LOAD_TABLE_WITH_READ_DELEGATION is defined as root or data_engineer or analyst_in_shared</text>
+  </g>
+</svg>

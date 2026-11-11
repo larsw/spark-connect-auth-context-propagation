@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 450" width="1184" height="450" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="fga-fixed-ids-title fga-fixed-ids-desc">
+  <title id="fga-fixed-ids-title">OpenFGA needs a tuple for every object</title>
+  <desc id="fga-fixed-ids-desc">On the left, the usual way to use OpenFGA: one object per table, such as TABLE_LIKE:poc_catalog/shared/events, with tuples written as tables and memberships are created, for example the table's parent namespace and the namespace's readers. A table created a minute ago has no tuples unless something wrote them, and nothing on this request path writes any, so a question about it is a plain false, even for a data engineer. On the right, what this branch does: Polaris sends resource-id-format type, so every table is the one object TABLE_LIKE:TABLE_LIKE, and the plugin sends the fixed id spark-connect. The tuples are written once, by openfga-setup, and they are on user:*, each with a condition. Which table is meant arrives in resource.properties, and the conditions decide from it. The relationship graph does no work: every decision is a CEL condition.</desc>
+  <defs>
+    <marker id="fga-fixed-ids-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="fga-fixed-ids-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="fga-fixed-ids-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="fga-fixed-ids-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+
+  <text class="d-xs d-b" x="0" y="18">ONE OBJECT PER TABLE (THE USUAL WAY)</text>
+  <text class="d-xs d-b" x="612" y="18">ONE OBJECT PER TYPE (THIS BRANCH)</text>
+
+  <rect class="d-box" x="0" y="30" width="572" height="150" rx="8"/>
+  <text class="d-xs d-m" x="16" y="58">TABLE_LIKE:poc_catalog/shared/events</text>
+  <text class="d-xs d-m" x="40" y="84">#parent  @NAMESPACE:poc_catalog/shared</text>
+  <text class="d-xs d-m" x="16" y="114">NAMESPACE:poc_catalog/shared</text>
+  <text class="d-xs d-m" x="40" y="140">#reader  @role:analyst#member</text>
+  <text class="d-xs d-i" x="16" y="168">written by whoever creates the table, and the role memberships</text>
+
+  <g class="fragment" data-fragment-index="1">
+  <rect class="d-no" x="0" y="196" width="572" height="112" rx="8"/>
+  <text class="d-s d-b d-not" x="16" y="222">alice creates shared.clicks</text>
+  <text class="d-xs" x="16" y="248">Polaris does not write tuples, and nothing else on the path does</text>
+  <text class="d-xs d-m" x="16" y="274">TABLE_LIKE:poc_catalog/shared/clicks  → no tuples</text>
+  <text class="d-xs" x="16" y="298"><tspan class="d-m">{"decision": false}</tspan>, for every caller, alice included</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="2">
+  <rect class="d-ok" x="612" y="30" width="572" height="150" rx="8"/>
+  <text class="d-xs d-m" x="628" y="58">TABLE_LIKE:TABLE_LIKE</text>
+  <text class="d-xs d-m" x="652" y="84">#data_engineer      @user:*  with data_engineer</text>
+  <text class="d-xs d-m" x="652" y="108">#analyst_in_shared  @user:*  with analyst_in_shared_table</text>
+  <text class="d-xs d-m" x="652" y="132">#root               @user:root  with from_polaris</text>
+  <text class="d-xs d-i" x="628" y="168">written once, by openfga-setup</text>
+
+  <rect class="d-box2" x="612" y="196" width="572" height="112" rx="8"/>
+  <text class="d-s d-b" x="628" y="222">Polaris: <tspan class="d-m">resource-id-format: type</tspan></text>
+  <text class="d-xs" x="628" y="248">plugin: <tspan class="d-m">authzen.resource-id spark-connect</tspan></text>
+  <text class="d-xs" x="628" y="274">which table or session: <tspan class="d-m">resource.properties</tspan></text>
+  <text class="d-xs" x="628" y="298">the conditions decide from those</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="3">
+  <rect class="d-note" x="0" y="330" width="1184" height="112" rx="8"/>
+  <text class="d-s d-b" x="16" y="358">The relationship graph does no work here</text>
+  <text class="d-xs" x="16" y="384">The callers send roles and attributes, not relationships, so every decision is a CEL condition on a <tspan class="d-m">user:*</tspan> tuple.</text>
+  <text class="d-xs" x="16" y="408">Using the graph would mean writing tuples as things change: role membership synchronised from Keycloak,</text>
+  <text class="d-xs" x="16" y="430">tables registered when Polaris creates them. Nothing in this stack does that.</text>
+  </g>
+</svg>

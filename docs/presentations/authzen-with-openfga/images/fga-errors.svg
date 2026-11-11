@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 440" width="1184" height="440" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="fga-errors-title fga-errors-desc">
+  <title id="fga-errors-title">Some questions get an error, not a no</title>
+  <desc id="fga-errors-desc">Four questions put to OpenFGA. One: bob, an analyst, asks for LOAD_TABLE on a table in shared; the answer is HTTP 200 with decision true. Two: carol, from Polaris, which leaves roles out when a principal has none; the answer is HTTP 400, missing context parameters subject_roles. Three: an action that is not a relation, NOT_AN_OPERATION; the answer is HTTP 400, relation TABLE_LIKE#NOT_AN_OPERATION not found. Four: carol again, inside an Access Evaluations batch; the answer is HTTP 200 with decision false and the error in the item's context. How the callers take each: Polaris denies on a 400 and on a false, with a 403. The plugin reports a false as PERMISSION_DENIED and a 400 as UNAVAILABLE, because it cannot tell an error from a PDP that is down, so it now always sends roles, as an empty list when there are none, and carol gets PERMISSION_DENIED.</desc>
+  <defs>
+    <marker id="fga-errors-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="fga-errors-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="fga-errors-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="fga-errors-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+
+  <text class="d-xs d-b" x="0" y="18">THE QUESTION</text>
+  <text class="d-xs d-b" x="560" y="18">OPENFGA'S ANSWER</text>
+
+  <rect class="d-box2" x="0" y="30" width="520" height="56" rx="8"/>
+  <text class="d-s" x="16" y="54">bob, <tspan class="d-m">roles [analyst]</tspan>, <tspan class="d-m">LOAD_TABLE</tspan></text>
+  <text class="d-xs" x="16" y="76">a table in <tspan class="d-m">shared</tspan></text>
+  <line class="d-line" x1="520" y1="58" x2="558" y2="58" marker-end="url(#fga-errors-arrow)"/>
+  <rect class="d-ok" x="560" y="30" width="624" height="56" rx="8"/>
+  <text class="d-s d-b d-okt" x="576" y="64">200  <tspan class="d-m">{"decision": true}</tspan></text>
+
+  <g class="fragment" data-fragment-index="1">
+  <rect class="d-box2" x="0" y="100" width="520" height="56" rx="8"/>
+  <text class="d-s" x="16" y="124">carol, from Polaris: <tspan class="d-m">roles</tspan> left out</text>
+  <text class="d-xs" x="16" y="146">Polaris omits an empty list</text>
+  <line class="d-noline" x1="520" y1="128" x2="558" y2="128" marker-end="url(#fga-errors-arrow-no)"/>
+  <rect class="d-no" x="560" y="100" width="624" height="56" rx="8"/>
+  <text class="d-s d-b d-not" x="576" y="124">400  validation_error</text>
+  <text class="d-xs d-m" x="576" y="146">missing context parameters '[subject_roles]'</text>
+
+  <rect class="d-box2" x="0" y="170" width="520" height="56" rx="8"/>
+  <text class="d-s" x="16" y="194">an action that is not a relation</text>
+  <text class="d-xs d-m" x="16" y="216">NOT_AN_OPERATION</text>
+  <line class="d-noline" x1="520" y1="198" x2="558" y2="198" marker-end="url(#fga-errors-arrow-no)"/>
+  <rect class="d-no" x="560" y="170" width="624" height="56" rx="8"/>
+  <text class="d-s d-b d-not" x="576" y="194">400  validation_error</text>
+  <text class="d-xs d-m" x="576" y="216">relation 'TABLE_LIKE#NOT_AN_OPERATION' not found</text>
+
+  <rect class="d-box2" x="0" y="240" width="520" height="56" rx="8"/>
+  <text class="d-s" x="16" y="264">carol again, inside a batch</text>
+  <text class="d-xs" x="16" y="286">Access Evaluations</text>
+  <line class="d-line" x1="520" y1="268" x2="558" y2="268" marker-end="url(#fga-errors-arrow)"/>
+  <rect class="d-no" x="560" y="240" width="624" height="56" rx="8"/>
+  <text class="d-s d-b d-not" x="576" y="264">200  <tspan class="d-m">{"decision": false,</tspan></text>
+  <text class="d-xs d-m" x="576" y="286">  "context": {"error": {"status": 400, ...}}}</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="2">
+  <rect class="d-note" x="0" y="316" width="1184" height="118" rx="8"/>
+  <text class="d-s d-b" x="16" y="342">How the callers take it</text>
+  <text class="d-xs" x="16" y="368">Polaris: a false and a 400 are both a 403. Nothing gets through.</text>
+  <text class="d-xs" x="16" y="392">The plugin: a false is <tspan class="d-m">PERMISSION_DENIED</tspan>, a 400 is <tspan class="d-m">UNAVAILABLE</tspan>, the same as a PDP that is down.</text>
+  <text class="d-xs" x="16" y="416">So the plugin now always sends <tspan class="d-m">roles</tspan>, as <tspan class="d-m">[]</tspan> when there are none, and carol gets a plain no.</text>
+  </g>
+</svg>

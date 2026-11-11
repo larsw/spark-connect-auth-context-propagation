@@ -14,8 +14,9 @@ Two components ask OpenFGA for authorization decisions, over the
 
 The policy is `docker/openfga/setup.py`, which builds the model, makes the store and writes the
 tuples on every `make up`. Keycloak still issues every token and still does the RFC 8693 exchange.
-The wiring is in [docs/authzen-pdp.md](docs/authzen-pdp.md). The slide deck in
-`docs/presentations/authzen-with-cerbos` still describes the Cerbos branch.
+The wiring is in [docs/authzen-pdp.md](docs/authzen-pdp.md), and the slide deck in
+`docs/presentations/authzen-with-openfga` walks through it and FINDINGS §21. The
+`authzen-with-cerbos` deck still describes the Cerbos branch.
 
 ## Test results and what each user gets
 

@@ -9,6 +9,7 @@ grey, and diagrams drawn as SVG.
 | --- | --- |
 | `identity-through-spark-connect` | A tour of the PoC: the problem, the stack, the path a query takes, the four hops (wire, token exchange, thread boundary, Polaris and vended keys), session integrity, the correlation ID, three clients, jobs, SPARQL, the lineage conflict, the upstream findings and how it is verified. |
 | `authzen-with-cerbos` | The `feat/authzen-cerbos` branch: Polaris and the Spark Connect plugin ask Cerbos for authorization decisions over AuthZEN. What changes from main, the request format, both enforcement points, the policies, the Cerbos roles mapping, write delegation and the S3 key, what stays in code, the comparison with Keycloak as the PDP, the tests, and the costs. |
+| `authzen-with-openfga` | The `feat/authzen-openfga` branch: OpenFGA replaces Cerbos as the PDP. How OpenFGA reads an AuthZEN request, why both callers send a fixed resource id, getting the store id to them, the policy as holders and operations, the JSON model, the questions OpenFGA answers with HTTP 400, both enforcement points, the correlation ID without a decision log, the comparison with Cerbos, the tests, and the costs (FINDINGS §21). |
 
 ## Building
 

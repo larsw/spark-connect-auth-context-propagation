@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1184 440" width="1184" height="440" font-family="Roboto, Helvetica, Arial, sans-serif" role="img" aria-labelledby="fga-two-peps-title fga-two-peps-desc">
+  <title id="fga-two-peps-title">Two enforcement points, one OpenFGA store</title>
+  <desc id="fga-two-peps-desc">Spark Connect with the propagation plugin, on the left, and the Polaris fork, on the right, both ask OpenFGA, in the middle, over AuthZEN: the plugin per authenticated RPC, with the RPC name as the action and spark_connect:spark-connect as the object; Polaris per catalog operation, with the operation as the action and one object per entity type, such as TABLE_LIKE:TABLE_LIKE. OpenFGA 1.22.1 runs with --experimentals authzen and an in-memory store, serves AuthZEN at /stores/&lt;id&gt;/access/v1/evaluation and evaluations, holds a model of 10 types and 5 conditions and 18 tuples, and logs requests to stdout with no decision log. Below it, a one-shot container, openfga-setup, runs docker/openfga/setup.py on every up: it makes the store, writes the model and the tuples, and writes the store id and Polaris's two endpoints to the openfga-store volume. Spark Connect's entrypoint reads store-id from the volume and builds the plugin's URL, refusing to start without it; Polaris reads polaris.properties from the volume through QUARKUS_CONFIG_LOCATIONS.</desc>
+  <defs>
+    <marker id="fga-two-peps-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7c"/>
+    </marker>
+    <marker id="fga-two-peps-arrow-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="fga-two-peps-arrow-em" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e25a1c"/>
+    </marker>
+    <marker id="fga-two-peps-arrow-cid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b52ab"/>
+    </marker>
+  </defs>
+  <style>
+    .d-t { font-size: 20px; fill: #1f3a57; }
+    .d-s { font-size: 16px; fill: #35516e; }
+    .d-xs { font-size: 14px; fill: #35516e; }
+    .d-b { font-weight: 600; }
+    .d-i { font-style: italic; }
+    .d-m { font-family: "Roboto Mono", monospace; white-space: pre; }
+    .d-c { text-anchor: middle; }
+    .d-halo { paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+    .d-box { fill: #eef3f8; stroke: #8aa2ba; stroke-width: 2; }
+    .d-box2 { fill: #dde8f3; stroke: #6f8fb0; stroke-width: 2; }
+    .d-box3 { fill: #c7d9ec; stroke: #4f739a; stroke-width: 2; }
+    .d-note { fill: #fff6d5; stroke: #c9a227; stroke-width: 1.5; }
+    .d-token { fill: #ffe6cc; stroke: #e25a1c; stroke-width: 1.5; }
+    .d-cid { fill: #ece4f7; stroke: #7b52ab; stroke-width: 1.5; }
+    .d-ok { fill: #e1f3e6; stroke: #2e8b57; stroke-width: 2; }
+    .d-no { fill: #fbe3e1; stroke: #c0392b; stroke-width: 2; }
+    .d-zone { fill: none; stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 3 4; }
+    .d-navy { fill: #1b2a41; }
+    .d-on-navy { fill: #fff; }
+    .d-okt { fill: #1e7b3c; }
+    .d-not { fill: #b3261e; }
+    .d-embt { fill: #b8460f; }
+    .d-cidt { fill: #5b3a8a; }
+    .d-line { stroke: #5b6b7c; stroke-width: 2; fill: none; }
+    .d-noline { stroke: #c0392b; stroke-width: 2; fill: none; }
+    .d-emline { stroke: #e25a1c; stroke-width: 2.5; fill: none; }
+    .d-cidline { stroke: #7b52ab; stroke-width: 1.5; fill: none; }
+    .d-life { stroke: #9fb0c2; stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .d-dash { stroke-dasharray: 6 5; }
+  </style>
+
+  <text class="d-xs d-b" x="0" y="18">ENFORCEMENT POINT</text>
+  <text class="d-xs d-b" x="412" y="18">DECISION POINT</text>
+  <text class="d-xs d-b" x="824" y="18">ENFORCEMENT POINT</text>
+
+  <rect class="d-box" x="0" y="30" width="360" height="150" rx="8"/>
+  <text class="d-t d-b" x="16" y="58">Spark Connect + plugin</text>
+  <text class="d-xs" x="16" y="86">per authenticated RPC</text>
+  <text class="d-xs" x="16" y="110">action = RPC name</text>
+  <text class="d-xs" x="16" y="134">object =</text>
+  <text class="d-xs d-m" x="16" y="158">spark_connect:spark-connect</text>
+
+  <rect class="d-box" x="824" y="30" width="360" height="150" rx="8"/>
+  <text class="d-t d-b" x="840" y="58">Apache Polaris (fork)</text>
+  <text class="d-xs" x="840" y="86">per catalog operation</text>
+  <text class="d-xs" x="840" y="110">action = operation, e.g. <tspan class="d-m">LOAD_TABLE</tspan></text>
+  <text class="d-xs" x="840" y="134">object = one per entity type, e.g.</text>
+  <text class="d-xs d-m" x="840" y="158">TABLE_LIKE:TABLE_LIKE</text>
+
+  <rect class="d-navy" x="412" y="30" width="360" height="210" rx="8"/>
+  <text class="d-t d-b d-on-navy" x="428" y="58">OpenFGA 1.22.1</text>
+  <text class="d-xs d-m d-on-navy" x="428" y="84">run --experimentals authzen</text>
+  <text class="d-xs d-m d-on-navy" x="428" y="110">/stores/&lt;id&gt;/access/v1/evaluation(s)</text>
+  <text class="d-s d-on-navy" x="428" y="138">store in memory</text>
+  <text class="d-s d-on-navy" x="428" y="162">model: 10 types, 5 conditions</text>
+  <text class="d-s d-on-navy" x="428" y="186">18 tuples</text>
+  <text class="d-s d-on-navy" x="428" y="214">request log; no decision log</text>
+
+  <g class="fragment" data-fragment-index="1">
+  <line class="d-line" x1="360" y1="105" x2="410" y2="105" marker-end="url(#fga-two-peps-arrow)"/>
+  <line class="d-line" x1="824" y1="105" x2="774" y2="105" marker-end="url(#fga-two-peps-arrow)"/>
+  <text class="d-xs d-b d-c d-halo" x="386" y="96">AuthZEN</text>
+  <text class="d-xs d-b d-c d-halo" x="798" y="96">AuthZEN</text>
+  </g>
+
+  <g class="fragment" data-fragment-index="2">
+  <rect class="d-box3" x="412" y="272" width="360" height="66" rx="8"/>
+  <text class="d-t d-b" x="428" y="298">openfga-setup</text>
+  <text class="d-xs" x="428" y="322">runs <tspan class="d-m">docker/openfga/setup.py</tspan> on every <tspan class="d-m">up</tspan></text>
+  <line class="d-line" x1="592" y1="272" x2="592" y2="242" marker-end="url(#fga-two-peps-arrow)"/>
+  <text class="d-xs d-halo" x="602" y="262">store, model, tuples</text>
+
+  <rect class="d-token" x="0" y="370" width="1184" height="64" rx="8"/>
+  <text class="d-s d-b d-embt" x="428" y="396">volume openfga-store</text>
+  <text class="d-xs d-m" x="428" y="420">store-id   polaris.properties</text>
+  <line class="d-emline" x1="592" y1="338" x2="592" y2="368" marker-end="url(#fga-two-peps-arrow-em)"/>
+
+  <line class="d-emline" x1="180" y1="370" x2="180" y2="182" marker-end="url(#fga-two-peps-arrow-em)"/>
+  <text class="d-xs d-halo" x="192" y="250">entrypoint.sh builds</text>
+  <text class="d-xs d-halo" x="192" y="270">the plugin's URL, and</text>
+  <text class="d-xs d-halo" x="192" y="290">refuses to start without it</text>
+  <line class="d-emline" x1="1004" y1="370" x2="1004" y2="182" marker-end="url(#fga-two-peps-arrow-em)"/>
+  <text class="d-xs d-halo" x="1016" y="260">both endpoints, via</text>
+  <text class="d-xs d-m d-halo" x="1016" y="280">QUARKUS_CONFIG_</text>
+  <text class="d-xs d-m d-halo" x="1016" y="300">LOCATIONS</text>
+  </g>
+</svg>
