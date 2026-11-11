@@ -87,14 +87,18 @@ class AuthZenClientTest {
   }
 
   @Test
-  void aSubjectWithNoRolesSendsNone() throws Exception {
+  void aSubjectWithNoRolesSendsAnEmptyList() throws Exception {
+    // OpenFGA answers HTTP 400 when a condition's parameter is missing, so "no roles" has to be
+    // said, not left out, for carol to get a plain false.
     client()
         .evaluate(
             new AuthZenClient.Subject("user", "carol", List.of(), Map.of()),
             "ExecutePlan", SESSION, null);
 
     Map<String, Object> body = JSONObjectUtils.parse(lastBody.get());
-    assertEquals(Map.of("type", "user", "id", "carol"), body.get("subject"));
+    assertEquals(
+        Map.of("type", "user", "id", "carol", "properties", Map.of("roles", List.of())),
+        body.get("subject"));
     assertFalse(body.containsKey("context"));
   }
 

@@ -30,7 +30,7 @@ public final class PluginConfig {
   public final long clockSkewSeconds;
 
   /**
-   * Base URL of an AuthZEN PDP, such as {@code http://cerbos:3592}, or null. When it is set, the
+   * Base URL of an AuthZEN PDP, such as {@code http://openfga:8080/stores/<store id>}, or null. When it is set, the
    * interceptor asks the PDP about every authenticated RPC before Spark sees it; when it is not, the
    * plugin authorises nothing itself and leaves every decision to Polaris, as before.
    */
@@ -41,6 +41,13 @@ public final class PluginConfig {
 
   /** The AuthZEN {@code resource.type} the interceptor asks about. */
   public final String authzenResourceType;
+
+  /**
+   * A fixed AuthZEN {@code resource.id}, or null to send the session id. A PDP that decides from
+   * stored relationships, such as OpenFGA, needs one: it has no tuples for a session that did not
+   * exist a moment ago. The session id is sent as {@code properties.session_id} either way.
+   */
+  public final String authzenResourceId;
 
   private PluginConfig(SparkConf conf) {
     this.issuer = require(conf, "oidc.issuer");
@@ -56,6 +63,8 @@ public final class PluginConfig {
     this.authzenUrl = authzen.isBlank() ? null : authzen.trim();
     this.authzenTimeoutMillis = Long.parseLong(conf.get(PREFIX + "authzen.timeout-ms", "2000"));
     this.authzenResourceType = conf.get(PREFIX + "authzen.resource-type", "spark_connect");
+    String resourceId = conf.get(PREFIX + "authzen.resource-id", "");
+    this.authzenResourceId = resourceId.isBlank() ? null : resourceId.trim();
 
     String secret = System.getenv("SPARK_CONNECT_PROPAGATION_CLIENT_SECRET");
     if (secret == null || secret.isBlank()) {

@@ -106,8 +106,12 @@ services:
         condition: service_healthy
       minio-setup:
         condition: service_completed_successfully
-      cerbos:
-        condition: service_healthy
+      openfga-setup:
+        condition: service_completed_successfully
+    volumes:
+      # openfga-setup writes polaris.properties here: the AuthZEN endpoints, which contain the
+      # OpenFGA store's id and so cannot be written in this file.
+      - openfga-store:/openfga:ro
     environment:
       # Root principal for bootstrap (internal auth); alice/bob arrive via Keycloak.
       POLARIS_BOOTSTRAP_CREDENTIALS: "POLARIS,root,s3cr3t"
@@ -154,23 +158,27 @@ services:
       polaris.readiness.ignore-severe-issues: "true"
       quarkus.otel.sdk.disabled: "true"
 
-      # ---- AuthZEN: authorization decisions come from Cerbos, not from Polaris grants ----
+      # ---- AuthZEN: authorization decisions come from OpenFGA, not from Polaris grants ----
       # Polaris stops deciding and asks a Policy Decision Point over the OpenID AuthZEN
       # Authorization API. The grants the bootstrap still creates no longer answer "may bob read
-      # this?"; the policies in docker/cerbos/policies do.
+      # this?"; the policy in docker/openfga/setup.py does.
       # tag::polaris-authzen[]
       polaris.authorization.type: "authzen"
 
-      # Endpoints are discovered from <pdp-uri>/.well-known/authzen-configuration, which Cerbos
-      # serves. Cerbos stays on the compose network and needs no credentials of its callers.
-      polaris.authorization.authzen.pdp-uri: "http://cerbos:3592"
+      # OpenFGA serves AuthZEN per store, at /stores/<id>/access/v1/evaluation(s), and its discovery
+      # document is not where Polaris looks for one. So the two endpoints are set explicitly, in
+      # /openfga/polaris.properties, which openfga-setup writes once the store exists.
+      QUARKUS_CONFIG_LOCATIONS: "file:/openfga/polaris.properties"
       polaris.authorization.authzen.auth.type: "none"
+
+      # OpenFGA answers from tuples, one per object, and has none for a table created a minute ago.
+      # With `type`, resource.id is the entity type, so every table is the one object
+      # TABLE_LIKE:TABLE_LIKE, and the conditions decide from the name and `parents` in
+      # resource.properties.
+      polaris.authorization.authzen.mapping.resource-id-format: "type"
       # end::polaris-authzen[]
 
-      # The defaults suit Cerbos: resource.type is the bare entity type (TABLE_LIKE, NAMESPACE,
-      # ...), which Cerbos uses as the resource kind, and the policies decide on the structured
-      # `parents` in resource.properties rather than on the joined id. Logged at DEBUG, each
-      # request shows exactly what was asked.
+      # Logged at DEBUG, each request shows exactly what was asked.
       quarkus.log.category."org.apache.polaris.extension.auth.authzen".level: "DEBUG"
 
       # Polaris is the ONLY component holding MinIO's root credentials -- it needs them
@@ -185,27 +193,38 @@ services:
       retries: 30
       start_period: 15s
 
-  # ------------------------------------------------------------------ Cerbos --
+  # ----------------------------------------------------------------- OpenFGA --
   # The Policy Decision Point. Polaris asks it about every catalog operation, and the Spark Connect
-  # plugin about every RPC, both over the OpenID AuthZEN Authorization API. It reads its policies
-  # from docker/cerbos/policies and reloads them when they change, so a policy can be edited with
-  # the stack running. Published on 3592 so a policy can be tried with curl from the host (see
-  # docs/authzen-pdp.md); its decision log goes to `docker compose logs cerbos`.
-  cerbos:
-    image: ghcr.io/cerbos/cerbos:0.56.0
-    command: ["server", "--config=/config/config.yaml"]
+  # plugin about every RPC, both over the OpenID AuthZEN Authorization API, which OpenFGA serves as
+  # an experimental feature. The store lives in memory: openfga-setup loads the policy into it on
+  # every `up`. Published on 8093 so a decision can be tried with curl from the host (see
+  # docs/authzen-pdp.md). Every request is logged as JSON with what was asked and answered, in
+  # `docker compose logs openfga`.
+  openfga:
+    image: openfga/openfga:v1.22.1
+    command: ["run", "--experimentals", "authzen", "--log-format", "json"]
     ports:
-      - "3592:3592"
-    environment:
-      CERBOS_NO_TELEMETRY: "1"
-    volumes:
-      - ./docker/cerbos/config.yaml:/config/config.yaml:ro
-      - ./docker/cerbos/policies:/policies:ro
+      - "8093:8080"
     healthcheck:
-      test: ["CMD", "/cerbos", "healthcheck", "--config=/config/config.yaml"]
+      test: ["CMD", "/usr/local/bin/grpc_health_probe", "-addr=localhost:8081"]
       interval: 2s
       timeout: 2s
       retries: 30
+
+  # Makes the store, writes the model and the tuples, and leaves the store's id where Polaris and
+  # Spark Connect read it. Safe to rerun against a running stack after editing the policy:
+  #   docker compose run --rm openfga-setup
+  openfga-setup:
+    image: python:3.12-slim
+    depends_on:
+      openfga:
+        condition: service_healthy
+    environment:
+      OPENFGA_URL: "http://openfga:8080"
+    volumes:
+      - ./docker/openfga:/setup:ro
+      - openfga-store:/openfga
+    entrypoint: ["python", "-I", "/setup/setup.py"]
 
   polaris-setup:
     image: alpine/curl:8.21.0
@@ -431,7 +450,7 @@ services:
       # Same reasoning: 8090 is only the host-published port.
       ONTOP_URL: "http://ontop:8080"
       SPARQL_CONSOLE_URL: "http://sparql-console"
-      CERBOS_URL: "http://cerbos:3592"
+      OPENFGA_URL: "http://openfga:8080"
       CONNECT_SHARED_SECRET: "${CONNECT_SHARED_SECRET:-poc-shared-secret}"
     volumes:
       - ./client:/work/client:ro
@@ -479,13 +498,17 @@ services:
       # and rides x-user-token.
       SPARK_CONNECT_AUTHENTICATE_TOKEN: "${CONNECT_SHARED_SECRET:-poc-shared-secret}"
       SPARK_CONNECT_PROPAGATION_CLIENT_SECRET: "spark-connect-secret"
+      # The plugin's PDP. entrypoint.sh adds the store id from /openfga/store-id.
+      OPENFGA_URL: "http://openfga:8080"
     depends_on:
       spark-master:
         condition: service_healthy
       polaris-setup:
         condition: service_completed_successfully
-      cerbos:
-        condition: service_healthy
+      openfga-setup:
+        condition: service_completed_successfully
+    volumes:
+      - openfga-store:/openfga:ro
     ports:
       - "15002:15002"
       - "4040:4040"
@@ -498,5 +521,6 @@ services:
 
 volumes:
   audit:
+  openfga-store:
   minio-data:
   marquez-db:

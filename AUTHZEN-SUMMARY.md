@@ -1,10 +1,10 @@
-# AuthZEN with Cerbos: what this branch does, and what it turned up
+# AuthZEN with OpenFGA: what this branch does, and what it turned up
 
-Branch `feat/authzen-cerbos`, 2026-11-09. Not merged to `main`. It builds on the earlier
-`feat/authzen-pdp-support`, which sent Polaris's decisions to Keycloak as the PDP, and replaces
-Keycloak in that role with [Cerbos](https://www.cerbos.dev/).
+Branch `feat/authzen-openfga`, 2026-11-10. Not merged to `main`. It is cut from
+`feat/authzen-cerbos` and replaces [Cerbos](https://www.cerbos.dev/) as the policy decision point
+with [OpenFGA](https://openfga.dev/) 1.22.1, using its experimental AuthZEN API.
 
-Two components now ask Cerbos for authorization decisions, over the
+Two components ask OpenFGA for authorization decisions, over the
 [OpenID AuthZEN Authorization API 1.0](https://openid.net/specs/authorization-api-1_0.html):
 
 - **Polaris**, through the fork [larsw/polaris @ `feat/authzen-pdp-support`](https://github.com/larsw/polaris/tree/feat/authzen-pdp-support),
@@ -12,17 +12,17 @@ Two components now ask Cerbos for authorization decisions, over the
 - **The Spark Connect plugin**, for every RPC except ReleaseSession and ReleaseExecute, after its own
   token and session checks.
 
-The policies are seven YAML files in `docker/cerbos/policies`. Keycloak still issues every token and
-still does the RFC 8693 exchange; it is no longer a PDP. The wiring is in
-[docs/authzen-pdp.md](docs/authzen-pdp.md), and the slide deck in
-`docs/presentations/authzen-with-cerbos` walks through it.
+The policy is `docker/openfga/setup.py`, which builds the model, makes the store and writes the
+tuples on every `make up`. Keycloak still issues every token and still does the RFC 8693 exchange.
+The wiring is in [docs/authzen-pdp.md](docs/authzen-pdp.md). The slide deck in
+`docs/presentations/authzen-with-cerbos` still describes the Cerbos branch.
 
 ## Test results and what each user gets
 
-Inside the compose network, all 77 Python tests pass: 43 against the running stack and 34 client
-unit tests. Of the 43, eight ask Cerbos directly and the rest go through Spark Connect or Polaris.
-The Java plugin's 38 unit tests also pass. The JVM and Rust integration suites were not rerun for
-this branch.
+Inside the compose network, all 78 Python tests pass: 44 against the running stack and 34 client
+unit tests. Of the 44, nine ask OpenFGA directly and the rest go through Spark Connect or Polaris. The
+Java plugin's 38 unit tests also pass. The JVM and Rust integration suites were not rerun for this
+branch.
 
 | | alice (data_engineer) | bob (analyst) | spark-job (analyst) | carol (no role) |
 |---|---|---|---|---|
@@ -31,70 +31,70 @@ this branch.
 | vended S3 key can write | yes | no | no | refused by Spark Connect |
 | `addArtifacts` | yes | refused by Spark Connect | refused by Spark Connect | refused by Spark Connect |
 
-Every one of those decisions is in Cerbos's decision log, under the caller's correlation ID, so
-`make cid` now finds the PDP's decision beside the Spark Connect and Polaris log lines.
+The same as on the Cerbos branch. Every one of those decisions is in OpenFGA's request log, which
+carries the caller's correlation ID in the AuthZEN context, so `make cid` finds the PDP's decision
+beside the Spark Connect and Polaris log lines.
 
-## What it turned up
+## What changed to make OpenFGA fit (FINDINGS §21)
 
-### Cerbos ignores `subject.properties.roles` (FINDINGS §20)
+### The callers send a fixed resource id
 
-Cerbos puts the subject's properties in `principal.attr`. It takes roles only from a property named
-`cerbos.roles`, and otherwise uses the subject's type, so every caller here has `roles: ["user"]`. A
-rule with `roles: ["analyst"]` never matches: the answer is a plain `false`, logged as an ordinary
-deny. Polaris cannot send `cerbos.roles`, so the policies use derived roles that read `P.attr.roles`.
+OpenFGA decides from tuples, one per object, and has no wildcard object. Tables, namespaces and
+Spark Connect sessions exist only at runtime, and nothing on the request path writes tuples. So
+Polaris now sends `resource-id-format: type` (every table is `TABLE_LIKE:TABLE_LIKE`), and the
+plugin has a new `authzen.resource-id` (every session is `spark_connect:spark-connect`, with the
+session id moved to `properties.session_id`). Which table is meant comes from the properties, so the
+decisions are made by CEL conditions on `user:*` tuples, plus one tuple naming root.
 
-### The policy decides how much the vended S3 key may do
+### The store id has to reach both callers
 
-On a delegated load Polaris asks for write delegation first and falls back to read only when that is
-refused. A policy that allows an analyst `LOAD_TABLE_WITH_WRITE_DELEGATION` hands them
-`s3:PutObject`, and every query still works. The earlier Keycloak branch shipped that mistake. Two
-tests guard against it here: one asks Cerbos directly, one reads the session policy MinIO embedded
-in the key Polaris vends bob.
+OpenFGA's AuthZEN paths are `/stores/<id>/access/v1/...`, the id is made at runtime, and its
+discovery document is not where Polaris looks for one. `openfga-setup` writes the id to a shared
+volume. Polaris reads both endpoints from a properties file there, through
+`QUARKUS_CONFIG_LOCATIONS`, and the Spark image's entrypoint builds the plugin's URL from it.
 
-### The Python client never authenticated `addArtifacts` (FINDINGS §18)
+### Some questions get an error instead of `false`
 
-Its interceptor covered two of grpc-python's four call shapes, and `AddArtifacts` is
-client-streaming, so it went out with no token at all. This was on `main` too, and is fixed on both.
+A condition parameter missing from the request, or an action the model does not have, is HTTP 400.
+Polaris leaves `roles` out for a principal with none, and treats the 400 as a deny. The plugin now
+always sends `roles`, so carol gets `PERMISSION_DENIED`, not `UNAVAILABLE`. OpenFGA has no wildcard
+relation either, so "may do anything" is all 119 Polaris operations as relations on each type, and a
+new Polaris operation is refused to everyone until it is added to `polaris-operations.txt`.
 
-### CloneSession skipped the session checks (FINDINGS §19)
+### The model is JSON, not the DSL
 
-The interceptor passed request types it did not recognise straight through, and Spark 4.1's
-CloneSession was one, so a clone skipped the `user_id` and session-owner checks. It now reads
-CloneSession, claims the new session id for the caller, and refuses any request type it does not
-know. This gap is on `main` as well.
+The table and namespace conditions need a `list<map<string>>` parameter for Polaris's `parents`. The
+API accepts it; the DSL and `fga model transform` do not. So `setup.py` builds the model as JSON from
+a short table of who holds what.
 
-### The fork needs exactly Java 21, as a full JDK
+## Compared with Cerbos
 
-Polaris's own `make build-server` refuses any `java` that is not exactly 21, and Gradle needs a JDK
-with `javac`, not the Java 21 runtime some distributions install. `make polaris-image` now runs
-Gradle in an `eclipse-temurin:21-jdk` container, so the host needs only git and docker.
-
-### quay.io/minio refuses anonymous pulls
-
-Since November 2026, `quay.io/minio` refuses anonymous pulls. MinIO and `mc` now come from
-Chainguard's public images, pinned by digest, on `main` and here.
-
-## Compared with Keycloak as the PDP
-
-| | Keycloak (`feat/authzen-pdp-support`) | Cerbos (this branch) |
+| | Cerbos (`feat/authzen-cerbos`) | OpenFGA (this branch) |
 |---|---|---|
-| Enforcement points | Polaris only | Polaris and Spark Connect |
-| Policy | authorization services in the realm, about 4,800 lines of JSON | seven YAML files |
-| Who a rule names | individual users: alice, bob, root | roles: data_engineer, analyst |
-| Resources | registered in advance, so decisions are per registered name or entity type | nothing registered; decisions per namespace or table, from `parents` |
-| Calling the PDP | client credentials, as `polaris-pdp` | no credentials, inside the compose network |
-| Traps | `UNANIMOUS` by default; root needed a Keycloak user | roles have to be read from attributes |
+| Policy | seven YAML files | one Python file that builds a JSON model and 18 tuples |
+| Roles | read back out of `principal.attr` by derived roles | conditions on `subject_roles` |
+| Resources | decided from `parents`, ids as Polaris sends them | one fixed object per type; decided from `parents` by conditions |
+| "Anything" | `actions: ["*"]` | every operation listed, 119 per Polaris type |
+| Missing attribute, unknown action | `false` | HTTP 400 |
+| Endpoint | one URL, with discovery | per store; the id is passed to both callers at startup |
+| Policy reload | watched directory | `docker compose run --rm openfga-setup` |
+| Decision log | yes, with X-Request-ID | no; the request log has the AuthZEN context |
+| State | none | the store is in memory; restarting OpenFGA alone loses it |
+
+The relationship graph, which is what OpenFGA is for, does no work here. The callers send roles and
+attributes, not relationships, so every decision is a CEL condition. Using it would mean writing
+tuples as resources and memberships change, for example role membership synchronised from Keycloak,
+or tables registered when Polaris creates them. Nothing in this stack does that today.
 
 ## Costs and open questions
 
-- Polaris moves from the 1.7.0 release to a 1.8.0 snapshot of the fork, and its AuthZEN support is a
-  preview feature.
-- Cerbos is on the path of every checked RPC and every catalog operation, and both callers fail
-  closed, so it has to be as available as Keycloak. Here it is plain HTTP with no authentication,
-  and write access to the policy directory is admin access.
+- Polaris moves from the 1.7.0 release to a 1.8.0 snapshot of the fork, its AuthZEN support is a
+  preview feature, and OpenFGA's AuthZEN API is experimental.
+- OpenFGA is on the path of every checked RPC and every catalog operation, and both callers fail
+  closed. Here it is plain HTTP with no authentication, and the API that writes models and tuples is
+  on the same port as AuthZEN.
+- The store lives in memory. A persistent datastore (Postgres, MySQL or SQLite) would survive a
+  restart, and the store id would then stay put.
 - The plugin caches no decisions.
 - `bootstrap.sh` still creates catalog-role grants that nothing reads. Its principal-role assignments
   still matter.
-- We looked at replacing Keycloak with Dex and kept Keycloak. Dex implements the RFC 8693 grant only
-  for tokens an upstream OIDC provider issued, not its own, so the server would have to forward the
-  user's token instead of exchanging it.

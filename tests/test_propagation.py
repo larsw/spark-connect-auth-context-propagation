@@ -77,7 +77,7 @@ def test_a_service_account_is_authorised_by_its_own_grants(spark_job):
 
     On this branch the refusal is the PDP's, and the fork's message does not name the principal
     ("AuthZEN PDP denied authorization"). That it was this account being refused, and not the
-    server, is read from Cerbos's decision log instead, found by the correlation ID.
+    server, is read from OpenFGA's request log instead, found by the correlation ID.
     """
     assert spark_job.sql("SELECT count(*) c FROM polaris.shared.events").collect()[0].c == 3
 
@@ -91,12 +91,7 @@ def test_a_service_account_is_authorised_by_its_own_grants(spark_job):
 
     if not docker_logs_available():
         return
-    denied_principals = {
-        entry["principal"]["id"]
-        for decision in decisions_mentioning(marker)
-        for entry, output in zip(decision["checkResources"]["inputs"], decision["checkResources"]["outputs"])
-        if any(action["effect"] == "EFFECT_DENY" for action in output["actions"].values())
-    }
+    denied_principals = {who for who, allowed in decisions_mentioning(marker) if not allowed}
     assert denied_principals == {"service-account-spark-job"}, denied_principals
 
 

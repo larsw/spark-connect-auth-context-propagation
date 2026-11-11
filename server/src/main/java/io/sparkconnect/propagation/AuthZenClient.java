@@ -47,7 +47,10 @@ public final class AuthZenClient {
     this.http = http;
   }
 
-  /** The client for a PDP at {@code baseUrl}, such as {@code http://cerbos:3592}. */
+  /**
+   * The client for a PDP at {@code baseUrl}, the URL the AuthZEN paths are relative to. For OpenFGA
+   * that is the store's URL, such as {@code http://openfga:8080/stores/01J...}.
+   */
   public static AuthZenClient forBaseUrl(String baseUrl, Duration timeout) {
     String trimmed = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     return new AuthZenClient(URI.create(trimmed + EVALUATION_PATH), timeout);
@@ -120,17 +123,17 @@ public final class AuthZenClient {
 
   static Map<String, Object> requestBody(
       Subject subject, String action, Resource resource, String requestId) {
+    // tag::roles[]
+    // roles is always sent, as an empty list when there are none. OpenFGA's conditions read it as
+    // subject_roles, and a condition whose parameter is missing is an HTTP 400 there, not a false.
     Map<String, Object> subjectProperties = new LinkedHashMap<>(subject.properties());
-    if (subject.roles() != null && !subject.roles().isEmpty()) {
-      subjectProperties.put("roles", List.copyOf(subject.roles()));
-    }
+    subjectProperties.put("roles", subject.roles() == null ? List.of() : List.copyOf(subject.roles()));
+    // end::roles[]
 
     Map<String, Object> subjectJson = new LinkedHashMap<>();
     subjectJson.put("type", subject.type());
     subjectJson.put("id", subject.id());
-    if (!subjectProperties.isEmpty()) {
-      subjectJson.put("properties", subjectProperties);
-    }
+    subjectJson.put("properties", subjectProperties);
 
     Map<String, Object> resourceJson = new LinkedHashMap<>();
     resourceJson.put("type", resource.type());

@@ -54,8 +54,27 @@ case "$SPARK_ROLE" in
     # a primary resource, so pass that same jar explicitly.
     CONNECT_JAR="$(ls "$SPARK_HOME"/jars/spark-connect_2.13-*.jar | head -1)"
     echo "using connect jar: $CONNECT_JAR"
+
+    # The plugin's PDP. OpenFGA's AuthZEN paths contain the store id, which openfga-setup writes to
+    # a shared volume once it has made the store. With OPENFGA_URL set and no id, refuse to start
+    # rather than serve requests nobody authorises.
+    # tag::store-id[]
+    AUTHZEN_CONF=()
+    if [ -n "${OPENFGA_URL:-}" ]; then
+      STORE_FILE="${OPENFGA_STORE_FILE:-/openfga/store-id}"
+      if [ ! -s "$STORE_FILE" ]; then
+        echo "FATAL: OPENFGA_URL is set but $STORE_FILE is missing; did openfga-setup run?" >&2
+        exit 1
+      fi
+      AUTHZEN_URL="${OPENFGA_URL%/}/stores/$(tr -d '[:space:]' < "$STORE_FILE")"
+      echo "AuthZEN PDP: $AUTHZEN_URL"
+      AUTHZEN_CONF=(--conf "spark.connect.propagation.authzen.url=$AUTHZEN_URL")
+    fi
+    # end::store-id[]
+
     exec "$SPARK_HOME/bin/spark-submit" \
       --class org.apache.spark.sql.connect.service.SparkConnectServer \
+      "${AUTHZEN_CONF[@]}" \
       --name "Spark Connect server (propagation PoC)" \
       --conf spark.driver.host=spark-connect \
       --conf spark.driver.bindAddress=0.0.0.0 \

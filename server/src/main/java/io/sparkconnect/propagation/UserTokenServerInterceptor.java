@@ -342,7 +342,9 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
       // a policy should not be able to turn them off. This one is about what an authenticated user
       // may do, which is policy.
       if (pdp != null && pdpSubject != null) {
+        String sessionId = coordinates.sessionId() == null ? "" : coordinates.sessionId();
         Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("session_id", sessionId);
         properties.put("user_id", coordinates.userId() == null ? "" : coordinates.userId());
         if (coordinates.operationId() != null && !coordinates.operationId().isBlank()) {
           properties.put("operation_id", coordinates.operationId());
@@ -355,7 +357,7 @@ public final class UserTokenServerInterceptor implements ServerInterceptor {
                 action,
                 new AuthZenClient.Resource(
                     config.authzenResourceType,
-                    coordinates.sessionId() == null ? "" : coordinates.sessionId(),
+                    config.authzenResourceId != null ? config.authzenResourceId : sessionId,
                     properties),
                 correlationId);
         if (!decision.allowed()) {

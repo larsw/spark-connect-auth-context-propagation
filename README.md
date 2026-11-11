@@ -8,15 +8,16 @@ service involved.
 Spark holds **no object-storage credentials at all**. The only credentials on the data path are
 the ones Polaris vends for whichever user made the request.
 
-> **This branch is not `main`.** Authorization decisions are made by [Cerbos](https://www.cerbos.dev/),
+> **This branch is not `main`.** Authorization decisions are made by [OpenFGA](https://openfga.dev/),
 > asked over the OpenID AuthZEN Authorization API by two callers: a fork of Apache Polaris, for
 > every catalog operation, and the Spark Connect plugin, for every RPC except ReleaseSession and
-> ReleaseExecute. The policies are the YAML files in `docker/cerbos/policies`.
+> ReleaseExecute. The policy is in `docker/openfga/setup.py`, which loads it into OpenFGA on every
+> `make up`. It replaces the Cerbos PDP of `feat/authzen-cerbos`, which this branch is cut from.
 > [AUTHZEN-SUMMARY.md](AUTHZEN-SUMMARY.md) is the short version, with this branch's test results;
 > [docs/authzen-pdp.md](docs/authzen-pdp.md) is how it is wired. Run `make polaris-image` before
 > `make up`. The status line and the sections below describe `main`: where they say Polaris
-> authorises by its grants, on this branch Cerbos policies decide, from the principal roles Polaris
-> still assigns.
+> authorises by its grants, on this branch the OpenFGA policy decides, from the principal roles
+> Polaris still assigns.
 
 **Status:** complete and verified. 43 end-to-end checks against the live stack, plus 109 unit tests.
 See [FINDINGS.md](FINDINGS.md) for what this exercise turned up about the upstream projects, and

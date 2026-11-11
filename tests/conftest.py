@@ -172,21 +172,36 @@ def compose_logs(service: str) -> str:
         return ""
 
 
-def decisions_mentioning(needle: str) -> list[dict]:
-    """Cerbos's decision-log entries whose line contains `needle`, such as a correlation ID.
+def decisions_mentioning(needle: str) -> list[tuple[str, bool]]:
+    """The AuthZEN decisions OpenFGA logged on a line containing `needle`, such as a correlation ID.
 
-    Cerbos writes one JSON object per decision to stdout (docker/cerbos/config.yaml), with the
-    caller's X-Request-ID under metadata, so a correlation ID finds the decisions one request caused.
+    OpenFGA has no decision log. It logs every request at info, as one JSON object with the request
+    and the response (`raw_request`, `raw_response`), and ignores the caller's X-Request-ID. Both
+    callers also put the correlation ID in the AuthZEN `context.request_id`, so it is in
+    `raw_request`, and a correlation ID finds the decisions one request caused.
+
+    Returns (subject id, decision) pairs. A batch (Polaris's Access Evaluations call) gives one pair
+    per evaluation; an evaluation that failed, such as one missing a condition parameter, is false.
     """
     decisions = []
-    for line in compose_logs("cerbos").splitlines():
-        if needle not in line or '"log.kind":"decision"' not in line.replace(" ", ""):
+    for line in compose_logs("openfga").splitlines():
+        if needle not in line:
             continue
-        start = line.find("{")
         try:
-            decisions.append(json.loads(line[start:]))
+            entry = json.loads(line[line.find("{"):])
         except ValueError:
             continue
+        method = entry.get("grpc_method")
+        request, response = entry.get("raw_request") or {}, entry.get("raw_response") or {}
+        subject = (request.get("subject") or {}).get("id", "")
+        if method == "Evaluation":
+            decisions.append((subject, response.get("decision") is True))
+        elif method == "Evaluations":
+            items = request.get("evaluations") or []
+            for i, answer in enumerate(response.get("evaluations") or []):
+                item = items[i] if i < len(items) else {}
+                who = (item.get("subject") or {}).get("id", subject)
+                decisions.append((who, answer.get("decision") is True))
     return decisions
 
 

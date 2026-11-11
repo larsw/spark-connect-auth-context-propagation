@@ -692,3 +692,66 @@ Resource properties map to `resource.attr` as expected, including nested lists s
 `parents`, so a rule can name a namespace without anything being registered in advance. That is the
 main practical difference from Keycloak's AuthZEN PDP, which resolves `resource.id` against
 resources registered beforehand, and so could only decide per entity type or per registered name.
+
+## 21. OpenFGA over AuthZEN: per-store paths, flattened properties, and errors where a PDP says no
+
+OpenFGA 1.22.1 serves the AuthZEN Access Evaluation and Evaluations APIs as an experimental feature
+(`run --experimentals authzen`). It maps a request onto a Check: the user is
+`subject.type:subject.id`, the relation is `action.name`, and the object is
+`resource.type:resource.id`. The properties become the Check's condition context, flattened and
+prefixed: `subject.properties.roles` is `subject_roles`, `resource.properties.parents` is
+`resource_parents`, and the request's `context` keys keep their names (`pkg/server/authzen.go`).
+Probed with `openfga/openfga:v1.22.1`, and then through the whole stack. Seven things follow from
+that mapping.
+
+**The endpoints are per store, and the store's id is only known at runtime.** Every path is
+`/stores/{store_id}/access/v1/...`. Discovery is at `/.well-known/authzen-configuration/{store_id}`,
+not at `<base>/.well-known/authzen-configuration`, which is where Polaris looks. There is no default
+store. So Polaris is given both endpoints explicitly, and the Spark Connect plugin the store's URL as
+its base. `openfga-setup` writes the store id to a volume both read: Polaris through
+`QUARKUS_CONFIG_LOCATIONS=file:/openfga/polaris.properties`, and Spark Connect through its
+entrypoint.
+
+**OpenFGA decides from tuples, one per object, and has no wildcard object.** A user may be `user:*`;
+an object may not. Polaris's tables and namespaces, and Spark Connect's sessions, exist only at
+runtime, so nothing could have tuples written for them in advance, and nothing on the request path
+writes any. Both callers therefore send a fixed `resource.id`. Polaris uses
+`mapping.resource-id-format: type`, so every table is the one object `TABLE_LIKE:TABLE_LIKE`. The
+plugin has a new `authzen.resource-id`, which makes every session `spark_connect:spark-connect`,
+with the session id moved into `properties.session_id`. Which table or namespace is meant then comes
+from the properties, through conditions, and the policy ends up as five CEL conditions on `user:*`
+tuples, plus one tuple naming root. OpenFGA's relationship graph does nothing here.
+
+**A missing condition parameter is HTTP 400, not `false`.** A condition is checked for all its
+declared parameters before it runs: `missing context parameters '[subject_roles]'`. Polaris leaves
+`roles` out of the subject when a principal has none, so for such a principal a single evaluation
+gets a 400, and a batch gets `decision: false` with the error in the item's `context`. Polaris
+denies on both. The plugin also left `roles` out, so carol would have got `UNAVAILABLE`
+instead of `PERMISSION_DENIED`. It now always sends `roles`, as an empty list when there are none.
+
+**An action OpenFGA does not know is HTTP 400, not `false`.** `invalid relation: relation
+'TABLE_LIKE#DROP_TABLE' not found`, and the same for an unknown type. There is no wildcard relation
+either, so "data engineers may do anything" becomes all 119 Polaris operations as relations on each
+of Polaris's eight resource types (`docker/openfga/polaris-operations.txt`). A new operation is
+refused to everyone, root included, until it is added there. The plugin reports the 400 as
+`UNAVAILABLE`, but its interceptor already refuses any RPC it does not read, and every RPC it reads
+is a relation.
+
+**The DSL cannot declare the parameter type that `parents` needs.** `condition c(resource_parents:
+list<map<string>>)` fails in `fga model transform` with `mismatched input 'map' expecting
+CONDITION_PARAM_TYPE`. The API accepts the same type in JSON and evaluates it correctly. So the
+model is built as JSON by `docker/openfga/setup.py`, not written as a `.fga` file.
+
+**There is no decision log, and X-Request-ID is ignored.** OpenFGA gives each request its own
+`request_id` and returns it as `X-Request-Id`. It does log every request at info, with `raw_request`
+and `raw_response`, which shows the decision. Both callers also put the correlation ID in the AuthZEN
+`context.request_id`, so it appears in `raw_request`, and `make cid` and the service-account test
+find OpenFGA's decision by it. Nothing here records why a decision was false.
+
+**Condition names need at least two characters.** A tuple naming a condition called `c` is
+refused (`value does not match regex pattern "^[^\s]{2,256}$"`), although a model defining it is
+accepted.
+
+Compared with Cerbos (§20): there, roles had to be read back out of attributes, but a missing
+attribute was just false and an unknown action fell through to deny. Here, the request's shape has
+to match the model exactly, or the answer is an error.

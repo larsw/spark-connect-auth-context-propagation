@@ -124,9 +124,9 @@ test-container: ## Full suite inside the compose network (no host setup needed)
 logs: ## Follow logs from every service
 	@$(COMPOSE) logs -f
 
-cid: ## Trace one correlation ID across Spark Connect, Polaris and Cerbos: make cid CID=<uuid>
+cid: ## Trace one correlation ID across Spark Connect, Polaris and OpenFGA: make cid CID=<uuid>
 	@test -n "$(CID)" || { echo "usage: make cid CID=<uuid>" >&2; exit 2; }
-	@for svc in spark-connect polaris cerbos; do \
+	@for svc in spark-connect polaris openfga; do \
 	  echo "----- $$svc -----"; \
 	  $(COMPOSE) logs --no-log-prefix $$svc 2>/dev/null | grep -aF "$(CID)" || echo "  (no match)"; \
 	done
